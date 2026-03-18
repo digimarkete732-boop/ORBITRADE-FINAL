@@ -1,0 +1,296 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --space: #0a0e17;
+    --space-light: #111827;
+    --space-dark: #050810;
+    --electric: #3a86ff;
+    --neon: #2af5ff;
+    --vibrant: #9d4edd;
+    --amber: #f59e0b;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--space);
+    color: #e5e7eb;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  ::selection {
+    background-color: rgba(58, 134, 255, 0.3);
+    color: white;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+  
+  .glass-panel-hover {
+    @apply glass-panel hover:bg-white/10 hover:border-white/20 transition-all duration-300;
+  }
+  
+  .btn-primary {
+    @apply px-6 py-3 rounded-lg bg-electric text-white font-medium text-sm 
+           hover:bg-electric/90 transition-all duration-300
+           hover:shadow-[0_0_20px_rgba(58,134,255,0.4)]
+           active:scale-[0.98];
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 rounded-lg glass-panel text-white font-medium text-sm 
+           hover:bg-white/10 transition-all duration-300;
+  }
+  
+  .btn-success {
+    @apply px-6 py-3 rounded-lg bg-neon/20 border border-neon/30 text-neon font-medium text-sm 
+           hover:bg-neon/30 hover:border-neon transition-all duration-300
+           hover:shadow-[0_0_20px_rgba(42,245,255,0.3)];
+  }
+  
+  .btn-danger {
+    @apply px-6 py-3 rounded-lg bg-vibrant/20 border border-vibrant/30 text-vibrant font-medium text-sm 
+           hover:bg-vibrant/30 hover:border-vibrant transition-all duration-300
+           hover:shadow-[0_0_20px_rgba(157,78,221,0.3)];
+  }
+  
+  .input-field {
+    @apply w-full bg-space-light border border-white/10 rounded-lg py-2.5 px-4 
+           text-sm text-white placeholder:text-gray-500
+           focus:outline-none focus:border-electric focus:ring-1 focus:ring-electric 
+           transition-all duration-300;
+  }
+  
+  .card {
+    @apply glass-panel rounded-xl p-4;
+  }
+  
+  .stat-card {
+    @apply glass-panel rounded-xl p-4 border-t-2;
+  }
+  
+  .nav-link {
+    @apply px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors duration-200;
+  }
+  
+  .nav-link-active {
+    @apply px-4 py-2 text-sm text-electric font-medium;
+  }
+  
+  .badge {
+    @apply px-2 py-0.5 rounded text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply badge bg-neon/20 text-neon border border-neon/20;
+  }
+  
+  .badge-warning {
+    @apply badge bg-amber/20 text-amber border border-amber/20;
+  }
+  
+  .badge-danger {
+    @apply badge bg-vibrant/20 text-vibrant border border-vibrant/20;
+  }
+  
+  .badge-info {
+    @apply badge bg-electric/20 text-electric border border-electric/20;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-electric via-neon to-white;
+  }
+  
+  .text-gradient-vibrant {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-vibrant to-neon;
+  }
+  
+  .glow-electric {
+    box-shadow: 0 0 20px rgba(58, 134, 255, 0.4);
+  }
+  
+  .glow-neon {
+    box-shadow: 0 0 20px rgba(42, 245, 255, 0.4);
+  }
+  
+  .glow-vibrant {
+    box-shadow: 0 0 20px rgba(157, 78, 221, 0.4);
+  }
+  
+  .ambient-bg {
+    position: relative;
+  }
+  
+  .ambient-bg::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    left: -10%;
+    width: 50%;
+    height: 50%;
+    background: radial-gradient(circle, rgba(58, 134, 255, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  .ambient-bg::after {
+    content: '';
+    position: absolute;
+    bottom: -20%;
+    right: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle, rgba(157, 78, 221, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .rotate-x-60 {
+    transform: rotateX(60deg);
+  }
+  
+  .rotate-y-10 {
+    transform: rotateY(-10deg);
+  }
+}
+
+/* Custom Range Slider */
+input[type="range"] {
+  @apply w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 bg-electric rounded-full cursor-pointer 
+         shadow-[0_0_10px_rgba(58,134,255,0.5)]
+         hover:bg-electric-light transition-all;
+}
+
+input[type="range"]::-moz-range-thumb {
+  @apply w-4 h-4 bg-electric rounded-full cursor-pointer border-0
+         shadow-[0_0_10px_rgba(58,134,255,0.5)]
+         hover:bg-electric-light transition-all;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  @apply relative inline-flex items-center cursor-pointer;
+}
+
+.toggle-switch input {
+  @apply sr-only;
+}
+
+.toggle-slider {
+  @apply w-9 h-5 bg-white/10 rounded-full 
+         after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+         after:bg-white after:rounded-full after:h-4 after:w-4 
+         after:transition-all;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  @apply bg-neon shadow-[0_0_10px_rgba(42,245,255,0.3)];
+}
+
+.toggle-switch input:checked + .toggle-slider::after {
+  @apply translate-x-4;
+}
+
+/* Animation classes */
+.animate-in {
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+.animate-in-delay-1 {
+  animation: slide-up 0.5s ease-out 0.1s forwards;
+  opacity: 0;
+}
+
+.animate-in-delay-2 {
+  animation: slide-up 0.5s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-in-delay-3 {
+  animation: slide-up 0.5s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+.animate-in-delay-4 {
+  animation: slide-up 0.5s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+/* Candlestick Chart */
+.candle {
+  @apply relative;
+}
+
+.candle-body {
+  @apply absolute w-full rounded-sm;
+}
+
+.candle-wick {
+  @apply absolute left-1/2 w-px -translate-x-1/2;
+}
+
+.candle.bullish .candle-body {
+  @apply bg-neon;
+}
+
+.candle.bullish .candle-wick {
+  @apply bg-neon/60;
+}
+
+.candle.bearish .candle-body {
+  @apply bg-vibrant;
+}
+
+.candle.bearish .candle-wick {
+  @apply bg-vibrant/60;
+}

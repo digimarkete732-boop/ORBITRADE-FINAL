@@ -1,0 +1,108 @@
+/* Additional custom styles for ORBITAL Trading Platform */
+
+/* Ensure smooth scrolling everywhere */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Custom focus styles */
+:focus-visible {
+  outline: 2px solid #3a86ff;
+  outline-offset: 2px;
+}
+
+/* Animation for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Price change animations */
+@keyframes price-up {
+  0% { color: #2af5ff; }
+  50% { color: #fff; }
+  100% { color: #2af5ff; }
+}
+
+@keyframes price-down {
+  0% { color: #9d4edd; }
+  50% { color: #fff; }
+  100% { color: #9d4edd; }
+}
+
+.price-up {
+  animation: price-up 0.5s ease-in-out;
+}
+
+.price-down {
+  animation: price-down 0.5s ease-in-out;
+}
+
+/* Trade button pulse effect */
+@keyframes trade-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(42, 245, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(42, 245, 255, 0.2);
+  }
+}
+
+.trade-btn-call:hover {
+  animation: trade-pulse 1.5s infinite;
+}
+
+.trade-btn-put:hover {
+  animation: trade-pulse 1.5s infinite;
+  --tw-shadow-color: rgba(157, 78, 221, 0.4);
+}
+
+/* Chart tooltip */
+.chart-tooltip {
+  position: absolute;
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  .full-mobile {
+    width: 100% !important;
+  }
+}
+
+/* Prevent text selection on trading buttons */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Toast notification overrides */
+.toast-custom {
+  background: #111827 !important;
+  color: #e5e7eb !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+}
