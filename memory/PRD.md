@@ -2,92 +2,63 @@
 
 ## Executive Summary
 **Project Name:** ORBITAL - Next-Generation Binary Options Trading Platform
-**Version:** 2.0 (AI Dashboard Overhaul)
+**Version:** 2.1 (P&L Tracker + Countdown Fix)
 **Last Updated:** March 18, 2026
 
 ## Original Problem Statement
 Build a comprehensive binary options trading platform supporting Forex, Cryptocurrencies, and Precious Metals with full trading functionality, AI-powered predictions, and professional-grade charts.
 
-## Latest Updates (v2.0) - AI Dashboard Overhaul
+## Latest Updates (v2.1) - P&L Tracker + Countdown
 
-### Completed Tasks:
-1. **AI-Powered BUY/SELL Predictions** - Emergent LLM (GPT-5.2) analyzes market data and shows live prediction percentages on BUY/SELL buttons (refreshes every 8s)
-2. **Live Metal Prices** - Integrated fawazahmed0 currency API for real-time XAU/USD and XAG/USD prices
-3. **Interactive Chart Timeframes** - 6 clickable timeframes: 1s, 5s, 1m, 5m, 15m, 1H with proper candle interval generation
-4. **Technical Indicators** - SMA 20, EMA 9, Bollinger Bands overlays with dropdown menu
-5. **Dashboard Redesign** - Clean, dark, professional design with:
-   - Scrolling price ticker at top
-   - Compact stats row (Balance, Active, P&L, Win Rate)
-   - Side-by-side BUY/SELL buttons with AI percentages
-   - Green/Red candlestick colors (industry standard)
-   - Live indicator dot
-6. **BUY/SELL Buttons** - Show AI prediction confidence percentages
-7. **Short Timeframes** - 5s, 10s, 15s, 30s, 60s expiry options
-8. **All Asset Categories** - Forex (live API), Crypto (CoinGecko), Metals (live API + cache)
+### New in v2.1:
+1. **Live P&L Tracker** - Daily/Weekly/Monthly profit tracking with clickable period toggle
+2. **Win Rate Display** - Real-time win rate with W/L count
+3. **Improved Live Countdown** - Decimal precision (e.g., 4.7s), 50ms updates, color-coded urgency (amber > orange > red with pulse)
+4. **P&L Backend Endpoint** - GET /api/user/pnl returns aggregated trade performance data
+
+### From v2.0:
+1. AI-Powered BUY/SELL Predictions (GPT-5.2)
+2. Live Metal Prices (fawazahmed0 currency API)
+3. Interactive Chart Timeframes (1s, 5s, 1m, 5m, 15m, 1H)
+4. Technical Indicators (SMA 20, EMA 9, Bollinger Bands)
+5. Dashboard Redesign (dark, professional, scrolling ticker)
 
 ## Default Accounts
-| Account Type | Email | Password | Balance |
-|--------------|-------|----------|---------|
-| Admin | admin@orbitrade.live | password | $100,000 |
-| Master User | masteruser@orbitrade.live | password | ~$49,630 |
+| Account Type | Email | Password |
+|--------------|-------|----------|
+| Admin | admin@orbitrade.live | password |
+| Master User | masteruser@orbitrade.live | password |
 
 ## Technical Details
 
-### Trading Engine
-- BUY/SELL directions (with legacy CALL/PUT support)
-- Expiry times: 5, 10, 15, 30, 60 seconds
-- Auto-settlement via background task
-- Real-time P&L calculation
+### P&L Tracker
+- Endpoint: GET /api/user/pnl
+- Returns: daily, weekly, monthly aggregates
+- Fields: profit, wins, losses, total trades, win_rate
+- Auto-refreshes every 10 seconds + after each trade settlement
+- Clickable to toggle between Daily/Weekly/Monthly view
 
-### Price Data
-- **Forex**: Live from `cdn.jsdelivr.net/npm/@fawazahmed0/currency-api`
-- **Crypto**: CoinGecko API with rate-limit fallback to cached data
-- **Metals**: Live from fawazahmed0 currency API (XAU, XAG rates) + cached Platinum/Palladium
+### Countdown Timer
+- 50ms update interval for smooth countdown
+- Decimal precision for sub-10s trades (e.g., "4.7s")
+- Color coding: amber (>10s) → orange (3-10s) → red pulsing (<3s)
+- Progress bar with smooth transition
 
-### AI Integration
-- **Prediction Engine**: POST /api/predict using Emergent LLM (GPT-5.2)
-- **Chat Assistant**: POST /api/chat for trading advice
-- Predictions refresh every 8 seconds on the dashboard
-
-### Chart Features
-- TradingView Lightweight Charts
-- 6 Timeframes: 1s, 5s, 1m, 5m, 15m, 1H
-- 3 Indicators: SMA 20, EMA 9, Bollinger Bands
-- Real-time candle updates
-- Volume bars
-
-### Auth
-- JWT authentication
-- Slide-to-verify (double-click bypass for accessibility)
-- Confirm password, Terms checkbox
-
-## Testing Results (v2.0)
-- Backend: **100%** (14/14 tests passed)
-- Frontend: **100%** (18/18 features verified)
-
-## API Endpoints
+### API Endpoints
 - POST `/api/auth/register` - User registration
 - POST `/api/auth/login` - Login
 - GET `/api/user/me` - Current user
+- GET `/api/user/pnl` - Daily/Weekly/Monthly P&L (NEW)
 - GET `/api/assets` - All tradeable assets
 - GET `/api/prices` - Live prices (forex, crypto, metals)
-- POST `/api/trades` - Place trade (direction: buy/sell, expiry_seconds: 5-60)
+- POST `/api/trades` - Place trade
 - GET `/api/trades` - Trade history
-- POST `/api/predict` - AI prediction (buy_confidence, sell_confidence)
+- POST `/api/predict` - AI prediction
 - POST `/api/chat` - AI chat
 
-## What's Working
-- All 3 asset categories with live/cached prices
-- AI-powered BUY/SELL prediction percentages
-- Interactive chart with timeframes and indicators
-- Fast trading (5-60 second options)
-- Live trade monitoring with countdown
-- Professional dark dashboard design
-- TradingView charts with technical indicators
-- Admin panel and user management
-- Affiliate system
-- AI chat support
-- Scrolling price ticker
+## Testing Results (v2.1)
+- Backend: **100%** (14/14 tests passed in v2.0 + P&L endpoint verified)
+- Frontend: **100%** (18/18 features + P&L tracker + countdown verified)
 
 ## Upcoming Tasks
 - P0: KYC Document Upload System
@@ -97,7 +68,7 @@ Build a comprehensive binary options trading platform supporting Forex, Cryptocu
 - P2: Backend refactoring (split server.py monolith)
 
 ## Known Limitations
-- Metal prices from fawazahmed0 API may differ from TradingView spot prices (different data sources)
-- CoinGecko crypto API is rate-limited; falls back to cached data
-- Payment gateways are placeholders (Stripe, PayPal, Crypto)
-- Slide-to-verify component requires double-click for automated testing
+- Metal prices from fawazahmed0 API may differ from TradingView (different data sources)
+- CoinGecko crypto API rate-limited; falls back to cached data
+- Payment gateways are placeholders
+- True MT5 feed requires broker VPS connection (not possible without VPS)

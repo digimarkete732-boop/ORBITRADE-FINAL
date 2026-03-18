@@ -869,6 +869,52 @@ async def create_trade(request: Request, trade_data: TradeCreate):
     
     return serialize_doc(trade)
 
+# ==================== P&L TRACKER ====================
+
+@fastapi_app.get("/api/user/pnl")
+async def get_user_pnl(request: Request):
+    """Get daily/weekly/monthly P&L for the current user"""
+    user = await get_current_user(request)
+    now = datetime.now(timezone.utc)
+    
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=now.weekday())
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    async def calc_pnl(since):
+        pipeline = [
+            {"$match": {
+                "user_id": user["id"],
+                "status": {"$in": ["won", "lost", "closed_early"]},
+                "settled_at": {"$gte": since}
+            }},
+            {"$group": {
+                "_id": None,
+                "total_profit": {"$sum": "$profit"},
+                "wins": {"$sum": {"$cond": [{"$eq": ["$status", "won"]}, 1, 0]}},
+                "losses": {"$sum": {"$cond": [{"$eq": ["$status", "lost"]}, 1, 0]}},
+                "total_trades": {"$sum": 1}
+            }}
+        ]
+        result = await db.trades.aggregate(pipeline).to_list(1)
+        if result:
+            r = result[0]
+            total = r["wins"] + r["losses"]
+            return {
+                "profit": round(r["total_profit"], 2),
+                "wins": r["wins"],
+                "losses": r["losses"],
+                "total": r["total_trades"],
+                "win_rate": round((r["wins"] / total) * 100, 1) if total > 0 else 0
+            }
+        return {"profit": 0, "wins": 0, "losses": 0, "total": 0, "win_rate": 0}
+    
+    daily = await calc_pnl(today_start)
+    weekly = await calc_pnl(week_start)
+    monthly = await calc_pnl(month_start)
+    
+    return {"daily": daily, "weekly": weekly, "monthly": monthly}
+
 @fastapi_app.get("/api/trades")
 async def get_trades(request: Request, status: Optional[str] = None, limit: int = 50):
     user = await get_current_user(request)

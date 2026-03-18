@@ -40,7 +40,11 @@ const Dashboard = () => {
 
   const countdownRef = useRef(null);
   const predictionRef = useRef(null);
-  const [, forceUpdate] = useState({});
+  const [tick, setTick] = useState(0);
+  
+  // P&L tracker state
+  const [pnl, setPnl] = useState({ daily: { profit: 0, wins: 0, losses: 0, win_rate: 0 }, weekly: { profit: 0 }, monthly: { profit: 0 } });
+  const [pnlPeriod, setPnlPeriod] = useState('daily');
 
   const expiryOptions = [
     { value: 5, label: '5s' },
@@ -106,14 +110,20 @@ const Dashboard = () => {
       else toast.error(`Trade closed: ${profitText}`);
       refreshUser();
       fetchTrades();
+      fetchPnl();
     });
 
     const interval = setInterval(() => fetchTrades(), 2000);
-    countdownRef.current = setInterval(() => forceUpdate({}), 100);
+    // Fast tick for smooth countdown (every 50ms)
+    countdownRef.current = setInterval(() => setTick(t => t + 1), 50);
+    // Fetch P&L every 10 seconds
+    fetchPnl();
+    const pnlInterval = setInterval(fetchPnl, 10000);
 
     return () => {
       socketService.disconnect();
       clearInterval(interval);
+      clearInterval(pnlInterval);
       if (countdownRef.current) clearInterval(countdownRef.current);
       if (predictionRef.current) clearInterval(predictionRef.current);
     };
@@ -139,6 +149,13 @@ const Dashboard = () => {
       const res = await api.get('/api/trades?limit=50');
       setOpenTrades(res.data.filter(t => t.status === 'open'));
       setTradeHistory(res.data.filter(t => t.status !== 'open'));
+    } catch (error) {}
+  };
+
+  const fetchPnl = async () => {
+    try {
+      const res = await api.get('/api/user/pnl');
+      setPnl(res.data);
     } catch (error) {}
   };
 
@@ -209,7 +226,10 @@ const Dashboard = () => {
 
   const getTimeLeft = (et) => Math.max(0, new Date(et) - new Date());
   const formatTimeLeft = (ms) => {
-    const s = Math.ceil(ms / 1000);
+    if (ms <= 0) return '0.0s';
+    const totalSec = ms / 1000;
+    if (totalSec < 10) return `${totalSec.toFixed(1)}s`;
+    const s = Math.ceil(totalSec);
     const m = Math.floor(s / 60);
     return m > 0 ? `${m}:${(s % 60).toString().padStart(2, '0')}` : `${s}s`;
   };
@@ -270,20 +290,45 @@ const Dashboard = () => {
         <div className="p-2 lg:p-3 max-w-[1800px] mx-auto w-full">
           {/* Stats Row */}
           <div className="grid grid-cols-4 gap-2 mb-2">
-            {[
-              { icon: <Wallet className="w-3.5 h-3.5" />, label: 'Balance', value: `$${(user?.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`, color: 'text-white', accent: 'border-electric/40' },
-              { icon: <Flame className="w-3.5 h-3.5" />, label: 'Active', value: openTrades.length, color: 'text-amber-400', accent: 'border-amber/40' },
-              { icon: <TrendingUp className="w-3.5 h-3.5" />, label: 'P&L', value: '+$0.00', color: 'text-emerald-400', accent: 'border-emerald-500/40' },
-              { icon: <BarChart3 className="w-3.5 h-3.5" />, label: 'Win Rate', value: '--', color: 'text-gray-400', accent: 'border-white/10' },
-            ].map((s, i) => (
-              <div key={i} className={`flex items-center gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 ${s.accent}`}>
-                <span className="text-gray-500">{s.icon}</span>
-                <div>
-                  <div className="text-[10px] text-gray-600 uppercase tracking-wider">{s.label}</div>
-                  <div className={`font-mono text-sm font-semibold ${s.color}`}>{s.value}</div>
+            <div className="flex items-center gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 border-electric/40">
+              <Wallet className="w-3.5 h-3.5 text-gray-500" />
+              <div>
+                <div className="text-[10px] text-gray-600 uppercase tracking-wider">Balance</div>
+                <div className="font-mono text-sm font-semibold text-white">${(user?.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 border-amber/40">
+              <Flame className="w-3.5 h-3.5 text-gray-500" />
+              <div>
+                <div className="text-[10px] text-gray-600 uppercase tracking-wider">Active</div>
+                <div className="font-mono text-sm font-semibold text-amber-400">{openTrades.length}</div>
+              </div>
+            </div>
+            {/* P&L with period toggle */}
+            <div className="flex items-center gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 border-emerald-500/40 cursor-pointer"
+              onClick={() => setPnlPeriod(p => p === 'daily' ? 'weekly' : p === 'weekly' ? 'monthly' : 'daily')}
+              data-testid="pnl-toggle">
+              <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                  P&L
+                  <span className="text-electric">{pnlPeriod === 'daily' ? 'Today' : pnlPeriod === 'weekly' ? 'Week' : 'Month'}</span>
+                </div>
+                <div className={`font-mono text-sm font-semibold ${pnl[pnlPeriod]?.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {pnl[pnlPeriod]?.profit >= 0 ? '+' : ''}${(pnl[pnlPeriod]?.profit || 0).toFixed(2)}
                 </div>
               </div>
-            ))}
+            </div>
+            <div className="flex items-center gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 border-white/10">
+              <BarChart3 className="w-3.5 h-3.5 text-gray-500" />
+              <div>
+                <div className="text-[10px] text-gray-600 uppercase tracking-wider">Win Rate</div>
+                <div className="font-mono text-sm font-semibold text-white">
+                  {pnl.daily?.win_rate > 0 ? `${pnl.daily.win_rate}%` : '--'}
+                  {pnl.daily?.total > 0 && <span className="text-[9px] text-gray-600 ml-1">{pnl.daily.wins}W/{pnl.daily.losses}L</span>}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
@@ -576,12 +621,15 @@ const Dashboard = () => {
                               </span>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className={`font-mono font-bold ${tl > 10000 ? 'text-amber-400' : 'text-red-400'}`}>
+                                <span className={`font-mono font-bold tabular-nums ${
+                                  tl > 10000 ? 'text-amber-400' : tl > 3000 ? 'text-orange-400' : 'text-red-400 animate-pulse'
+                                }`}>
                                   {formatTimeLeft(tl)}
                                 </span>
-                                <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all ${tl > 10000 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                    style={{ width: `${prog}%` }} />
+                                <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full ${
+                                    tl > 10000 ? 'bg-amber-500' : tl > 3000 ? 'bg-orange-500' : 'bg-red-500'
+                                  }`} style={{ width: `${prog}%`, transition: 'width 0.05s linear' }} />
                                 </div>
                               </div>
                             )}
