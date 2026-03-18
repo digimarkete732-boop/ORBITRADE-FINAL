@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Globe, Search, ArrowUp, ArrowDown, Clock, 
+  Globe, ArrowUp, ArrowDown, Clock, 
   TrendingUp, TrendingDown, Wallet, Zap, Activity,
-  MessageCircle, X, Send, Minus, Plus, Sparkles, Target
+  MessageCircle, X, Send, Minus, Plus, Sparkles, Target,
+  ChevronRight, BarChart3, DollarSign, Eye, Flame
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -23,29 +24,24 @@ const Dashboard = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Trade form state
   const [tradeAmount, setTradeAmount] = useState(100);
   const [expiryTime, setExpiryTime] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   
-  // AI Prediction state
   const [prediction, setPrediction] = useState({ buy_confidence: 50, sell_confidence: 50, reasoning: '' });
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [priceHistory, setPriceHistory] = useState([]);
   
-  // Chat state
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
 
-  // Live countdown interval
   const countdownRef = useRef(null);
   const predictionRef = useRef(null);
   const [, forceUpdate] = useState({});
 
-  // Expiry options - SHORT TIMEFRAMES
   const expiryOptions = [
     { value: 5, label: '5s' },
     { value: 10, label: '10s' },
@@ -54,33 +50,23 @@ const Dashboard = () => {
     { value: 60, label: '60s' }
   ];
 
-  // Crypto symbol mapping
   const cryptoMap = {
-    'BTC/USD': 'bitcoin',
-    'ETH/USD': 'ethereum',
-    'XRP/USD': 'ripple',
-    'LTC/USD': 'litecoin',
-    'SOL/USD': 'solana',
-    'DOGE/USD': 'dogecoin',
-    'ADA/USD': 'cardano',
-    'DOT/USD': 'polkadot'
+    'BTC/USD': 'bitcoin', 'ETH/USD': 'ethereum', 'XRP/USD': 'ripple',
+    'LTC/USD': 'litecoin', 'SOL/USD': 'solana', 'DOGE/USD': 'dogecoin',
+    'ADA/USD': 'cardano', 'DOT/USD': 'polkadot'
   };
 
-  // Fetch AI prediction
   const fetchPrediction = useCallback(async () => {
     if (!selectedAsset) return;
-    
     try {
       setPredictionLoading(true);
-      const currentPrice = getCurrentPrice();
-      
+      const cp = getCurrentPrice();
       const response = await api.post('/api/predict', {
         asset: selectedAsset.symbol,
         asset_type: selectedAsset.asset_type,
-        current_price: currentPrice,
+        current_price: cp,
         price_history: priceHistory.slice(-10)
       });
-      
       setPrediction(response.data);
     } catch (error) {
       console.error('Prediction error:', error);
@@ -89,7 +75,6 @@ const Dashboard = () => {
     }
   }, [selectedAsset, priceHistory]);
 
-  // Fetch assets and prices
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -98,20 +83,12 @@ const Dashboard = () => {
           api.get('/api/prices'),
           api.get('/api/trades?limit=50')
         ]);
-        
         setAssets(assetsRes.data);
         setPrices(pricesRes.data || { crypto: {}, forex: {}, metals: {} });
-        
-        // Set default selected asset
         const forexAssets = assetsRes.data.filter(a => a.asset_type === 'forex');
-        if (forexAssets.length > 0 && !selectedAsset) {
-          setSelectedAsset(forexAssets[0]);
-        }
-        
-        // Separate open and closed trades
+        if (forexAssets.length > 0 && !selectedAsset) setSelectedAsset(forexAssets[0]);
         setOpenTrades(tradesRes.data.filter(t => t.status === 'open'));
         setTradeHistory(tradesRes.data.filter(t => t.status !== 'open'));
-        
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load market data');
@@ -121,36 +98,18 @@ const Dashboard = () => {
     };
 
     fetchData();
-    
-    // Connect to socket for real-time prices
     socketService.connect();
-    
-    socketService.on('price_update', (data) => {
-      if (data) {
-        setPrices(data);
-      }
-    });
-    
+    socketService.on('price_update', (data) => { if (data) setPrices(data); });
     socketService.on('trade_settled', (data) => {
       const profitText = data.profit >= 0 ? `+$${data.profit.toFixed(2)}` : `-$${Math.abs(data.profit).toFixed(2)}`;
-      if (data.status === 'won') {
-        toast.success(`🎉 WINNER! ${profitText}`);
-      } else {
-        toast.error(`Trade closed: ${profitText}`);
-      }
+      if (data.status === 'won') toast.success(`Trade Won! ${profitText}`);
+      else toast.error(`Trade closed: ${profitText}`);
       refreshUser();
       fetchTrades();
     });
 
-    // Refresh trades every 2 seconds
-    const interval = setInterval(() => {
-      fetchTrades();
-    }, 2000);
-
-    // Live countdown update every 100ms
-    countdownRef.current = setInterval(() => {
-      forceUpdate({});
-    }, 100);
+    const interval = setInterval(() => fetchTrades(), 2000);
+    countdownRef.current = setInterval(() => forceUpdate({}), 100);
 
     return () => {
       socketService.disconnect();
@@ -160,31 +119,19 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Update price history and fetch prediction when asset changes
   useEffect(() => {
     if (selectedAsset) {
-      // Reset price history
       setPriceHistory([]);
-      
-      // Fetch initial prediction
       fetchPrediction();
-      
-      // Update prediction every 5 seconds
       if (predictionRef.current) clearInterval(predictionRef.current);
-      predictionRef.current = setInterval(fetchPrediction, 5000);
+      predictionRef.current = setInterval(fetchPrediction, 8000);
     }
-    
-    return () => {
-      if (predictionRef.current) clearInterval(predictionRef.current);
-    };
+    return () => { if (predictionRef.current) clearInterval(predictionRef.current); };
   }, [selectedAsset]);
 
-  // Track price history
   useEffect(() => {
     const price = getCurrentPrice();
-    if (price > 0) {
-      setPriceHistory(prev => [...prev.slice(-19), price]);
-    }
+    if (price > 0) setPriceHistory(prev => [...prev.slice(-19), price]);
   }, [prices]);
 
   const fetchTrades = async () => {
@@ -192,677 +139,484 @@ const Dashboard = () => {
       const res = await api.get('/api/trades?limit=50');
       setOpenTrades(res.data.filter(t => t.status === 'open'));
       setTradeHistory(res.data.filter(t => t.status !== 'open'));
-    } catch (error) {
-      console.error('Error fetching trades:', error);
-    }
+    } catch (error) {}
   };
 
-  // Get current price for selected asset
-  const getCurrentPrice = useCallback((assetSymbol = null, assetType = null) => {
-    const symbol = assetSymbol || selectedAsset?.symbol;
-    const type = assetType || selectedAsset?.asset_type;
-    
+  const getCurrentPrice = useCallback((sym = null, type = null) => {
+    const symbol = sym || selectedAsset?.symbol;
+    const t = type || selectedAsset?.asset_type;
     if (!symbol || !prices) return 0;
-    
-    if (type === 'crypto') {
-      const cryptoId = cryptoMap[symbol];
-      return prices.crypto?.[cryptoId]?.usd || 0;
-    }
-    
-    if (type === 'forex') {
-      return prices.forex?.[symbol]?.price || 0;
-    }
-    
-    if (type === 'metals') {
-      return prices.metals?.[symbol]?.price || 0;
-    }
-    
+    if (t === 'crypto') { const id = cryptoMap[symbol]; return prices.crypto?.[id]?.usd || 0; }
+    if (t === 'forex') return prices.forex?.[symbol]?.price || 0;
+    if (t === 'metals') return prices.metals?.[symbol]?.price || 0;
     return 0;
   }, [selectedAsset, prices]);
 
-  const getChange24h = useCallback((assetSymbol = null, assetType = null) => {
-    const symbol = assetSymbol || selectedAsset?.symbol;
-    const type = assetType || selectedAsset?.asset_type;
-    
+  const getChange24h = useCallback((sym = null, type = null) => {
+    const symbol = sym || selectedAsset?.symbol;
+    const t = type || selectedAsset?.asset_type;
     if (!symbol || !prices) return 0;
-    
-    if (type === 'crypto') {
-      const cryptoId = cryptoMap[symbol];
-      return prices.crypto?.[cryptoId]?.usd_24h_change || 0;
-    }
-    
-    if (type === 'forex') {
-      return prices.forex?.[symbol]?.change_24h || 0;
-    }
-    
-    if (type === 'metals') {
-      return prices.metals?.[symbol]?.change_24h || 0;
-    }
-    
+    if (t === 'crypto') { const id = cryptoMap[symbol]; return prices.crypto?.[id]?.usd_24h_change || 0; }
+    if (t === 'forex') return prices.forex?.[symbol]?.change_24h || 0;
+    if (t === 'metals') return prices.metals?.[symbol]?.change_24h || 0;
     return 0;
   }, [selectedAsset, prices]);
 
-  // Place trade
   const placeTrade = async (direction) => {
-    if (!selectedAsset) {
-      toast.error('Please select an asset');
-      return;
-    }
-    
-    if (tradeAmount < 1) {
-      toast.error('Minimum trade amount is $1');
-      return;
-    }
-    
-    if (tradeAmount > (user?.balance || 0)) {
-      toast.error('Insufficient balance');
-      return;
-    }
-    
+    if (!selectedAsset) { toast.error('Please select an asset'); return; }
+    if (tradeAmount < 1) { toast.error('Minimum trade amount is $1'); return; }
+    if (tradeAmount > (user?.balance || 0)) { toast.error('Insufficient balance'); return; }
     setSubmitting(true);
-    
     try {
       await api.post('/api/trades', {
-        asset: selectedAsset.symbol,
-        direction,
-        amount: tradeAmount,
-        expiry_seconds: expiryTime
+        asset: selectedAsset.symbol, direction,
+        amount: tradeAmount, expiry_seconds: expiryTime
       });
-      
       toast.success(`${direction.toUpperCase()} position opened on ${selectedAsset.symbol}!`);
       await refreshUser();
       await fetchTrades();
-      
     } catch (error) {
-      const message = error.response?.data?.detail || 'Failed to place trade';
-      toast.error(message);
+      toast.error(error.response?.data?.detail || 'Failed to place trade');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Chat functions
   const sendChatMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
-    
     const userMessage = chatInput.trim();
     setChatInput('');
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setChatLoading(true);
-    
     try {
       const response = await api.post('/api/chat', { message: userMessage });
       setChatMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
-    } catch (error) {
-      toast.error('Chat service unavailable');
-    } finally {
-      setChatLoading(false);
-    }
+    } catch (error) { toast.error('Chat service unavailable'); }
+    finally { setChatLoading(false); }
   };
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
-  // Filter assets by category
   const filteredAssets = assets.filter(a => a.asset_type === selectedCategory);
 
-  // Format price display
-  const formatPrice = (price, assetType) => {
+  const formatPrice = (price, aType) => {
     if (!price || price === 0) return '-.--';
-    if (assetType === 'forex') return price.toFixed(5);
-    if (assetType === 'metals') return price.toFixed(2);
+    if (aType === 'forex') return price.toFixed(5);
+    if (aType === 'metals') return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Calculate time left for trade
-  const getTimeLeft = (expiryTime) => {
-    const now = new Date();
-    const expiry = new Date(expiryTime);
-    return Math.max(0, expiry - now);
-  };
-
+  const getTimeLeft = (et) => Math.max(0, new Date(et) - new Date());
   const formatTimeLeft = (ms) => {
-    const totalSeconds = Math.ceil(ms / 1000);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    if (mins > 0) {
-      return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${secs}s`;
+    const s = Math.ceil(ms / 1000);
+    const m = Math.floor(s / 60);
+    return m > 0 ? `${m}:${(s % 60).toString().padStart(2, '0')}` : `${s}s`;
   };
 
-  // Calculate potential payout
   const potentialPayout = tradeAmount * (1 + (selectedAsset?.payout_rate || 0.85));
+  const currentPriceVal = getCurrentPrice();
+  const currentChange = getChange24h();
+  const isPositiveChange = currentChange >= 0;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-space flex items-center justify-center">
-        <motion.div 
-          className="flex flex-col items-center gap-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
+      <div className="min-h-screen bg-[#080c14] flex items-center justify-center">
+        <motion.div className="flex flex-col items-center gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="relative">
             <div className="w-16 h-16 border-4 border-electric/30 rounded-full"></div>
             <div className="absolute inset-0 w-16 h-16 border-4 border-electric border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <span className="text-gray-400">Loading markets...</span>
+          <span className="text-gray-500 text-sm font-mono">Loading markets...</span>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col pt-16 bg-space" data-testid="dashboard">
+    <div className="min-h-screen flex flex-col bg-[#080c14]" data-testid="dashboard">
       <Navbar />
       
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-electric/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-vibrant/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-neon/3 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+      {/* Subtle ambient background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-electric/[0.03] rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-vibrant/[0.03] rounded-full blur-[120px]"></div>
       </div>
-      
-      <main className="flex-grow p-2 md:p-4 max-w-[1700px] mx-auto w-full relative z-10">
-        {/* Top Stats Bar */}
-        <motion.div 
-          className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="glass-panel rounded-xl p-3 border-l-4 border-l-electric">
-            <div className="flex items-center gap-2 mb-1">
-              <Wallet className="w-4 h-4 text-electric" />
-              <span className="text-xs text-gray-400">Balance</span>
-            </div>
-            <div className="font-mono text-xl text-white">${(user?.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          </div>
-          
-          <div className="glass-panel rounded-xl p-3 border-l-4 border-l-neon">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-neon" />
-              <span className="text-xs text-gray-400">Active Trades</span>
-            </div>
-            <div className="font-mono text-xl text-white">{openTrades.length}</div>
-          </div>
-          
-          <div className="glass-panel rounded-xl p-3 border-l-4 border-l-amber">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-amber" />
-              <span className="text-xs text-gray-400">Today's P&L</span>
-            </div>
-            <div className="font-mono text-xl text-neon">+$0.00</div>
-          </div>
-          
-          <div className="glass-panel rounded-xl p-3 border-l-4 border-l-vibrant">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-4 h-4 text-vibrant" />
-              <span className="text-xs text-gray-400">Win Rate</span>
-            </div>
-            <div className="font-mono text-xl text-white">--</div>
-          </div>
-        </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          
-          {/* Left Panel: Assets */}
-          <motion.div 
-            className="lg:col-span-3 glass-panel rounded-2xl flex flex-col h-[450px] lg:h-[520px] overflow-hidden"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="p-4 border-b border-white/5 bg-gradient-to-r from-electric/10 to-transparent">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Globe className="w-4 h-4 text-electric" /> Live Markets
-              </h2>
-            </div>
-            
-            {/* Category Tabs - Pill Style */}
-            <div className="flex p-3 gap-2">
-              {['forex', 'crypto', 'metals'].map(cat => (
-                <button 
-                  key={cat}
-                  className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold capitalize transition-all ${
-                    selectedCategory === cat 
-                      ? 'bg-gradient-to-r from-electric to-neon text-space shadow-lg shadow-electric/25' 
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                  }`}
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    const categoryAssets = assets.filter(a => a.asset_type === cat);
-                    if (categoryAssets.length > 0) {
-                      setSelectedAsset(categoryAssets[0]);
-                    }
-                  }}
-                  data-testid={`category-${cat}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+      <main className="flex-grow pt-16 relative z-10">
+        {/* Scrolling Price Ticker */}
+        <div className="border-b border-white/5 bg-[#0a0f1a] overflow-hidden">
+          <div className="flex items-center gap-6 py-1.5 px-4 animate-marquee whitespace-nowrap">
+            {assets.slice(0, 12).map(a => {
+              const p = getCurrentPrice(a.symbol, a.asset_type);
+              const c = getChange24h(a.symbol, a.asset_type);
+              const pos = c >= 0;
+              return (
+                <span key={a.symbol} className="inline-flex items-center gap-2 text-xs font-mono cursor-pointer hover:opacity-80" 
+                  onClick={() => { setSelectedAsset(a); setSelectedCategory(a.asset_type); }}>
+                  <span className="text-gray-500">{a.symbol}</span>
+                  <span className={pos ? 'text-emerald-400' : 'text-red-400'}>
+                    {formatPrice(p, a.asset_type)}
+                  </span>
+                  <span className={`${pos ? 'text-emerald-500' : 'text-red-500'} text-[10px]`}>
+                    {pos ? '+' : ''}{c.toFixed(2)}%
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
 
-            {/* Asset List */}
-            <div className="overflow-y-auto flex-grow px-3 pb-3 space-y-2 custom-scrollbar">
-              {filteredAssets.map((asset, index) => {
-                const price = getCurrentPrice(asset.symbol, asset.asset_type);
-                const change = getChange24h(asset.symbol, asset.asset_type);
-                const isPositive = change >= 0;
-                const isSelected = selectedAsset?.symbol === asset.symbol;
-                
-                return (
-                  <motion.div 
-                    key={asset.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`p-3 rounded-xl cursor-pointer transition-all duration-300 ${
-                      isSelected 
-                        ? 'bg-gradient-to-r from-electric/20 to-neon/10 border border-electric/40 shadow-lg shadow-electric/10' 
-                        : 'bg-white/3 hover:bg-white/8 border border-transparent hover:border-white/10'
-                    }`}
-                    onClick={() => setSelectedAsset(asset)}
-                    data-testid={`asset-${asset.symbol}`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          isSelected 
-                            ? 'bg-gradient-to-br from-electric to-neon shadow-lg' 
-                            : 'bg-white/10'
-                        }`}>
-                          {asset.asset_type === 'crypto' && <span className={`font-bold ${isSelected ? 'text-space' : 'text-amber'}`}>₿</span>}
-                          {asset.asset_type === 'forex' && <span className={`font-bold ${isSelected ? 'text-space' : 'text-electric'}`}>$</span>}
-                          {asset.asset_type === 'metals' && <span className={`font-bold ${isSelected ? 'text-space' : 'text-amber'}`}>Au</span>}
-                        </div>
+        <div className="p-2 lg:p-3 max-w-[1800px] mx-auto w-full">
+          {/* Stats Row */}
+          <div className="grid grid-cols-4 gap-2 mb-2">
+            {[
+              { icon: <Wallet className="w-3.5 h-3.5" />, label: 'Balance', value: `$${(user?.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`, color: 'text-white', accent: 'border-electric/40' },
+              { icon: <Flame className="w-3.5 h-3.5" />, label: 'Active', value: openTrades.length, color: 'text-amber-400', accent: 'border-amber/40' },
+              { icon: <TrendingUp className="w-3.5 h-3.5" />, label: 'P&L', value: '+$0.00', color: 'text-emerald-400', accent: 'border-emerald-500/40' },
+              { icon: <BarChart3 className="w-3.5 h-3.5" />, label: 'Win Rate', value: '--', color: 'text-gray-400', accent: 'border-white/10' },
+            ].map((s, i) => (
+              <div key={i} className={`flex items-center gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2 border-l-2 ${s.accent}`}>
+                <span className="text-gray-500">{s.icon}</span>
+                <div>
+                  <div className="text-[10px] text-gray-600 uppercase tracking-wider">{s.label}</div>
+                  <div className={`font-mono text-sm font-semibold ${s.color}`}>{s.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
+            {/* Left: Asset List */}
+            <div className="lg:col-span-2 bg-white/[0.02] rounded-xl border border-white/[0.04] flex flex-col h-[460px] overflow-hidden">
+              <div className="px-3 pt-3 pb-2">
+                <div className="flex gap-1">
+                  {['forex', 'crypto', 'metals'].map(cat => (
+                    <button key={cat}
+                      className={`flex-1 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        selectedCategory === cat
+                          ? 'bg-electric text-white'
+                          : 'text-gray-600 hover:text-gray-300 hover:bg-white/5'
+                      }`}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        const ca = assets.filter(a => a.asset_type === cat);
+                        if (ca.length > 0) setSelectedAsset(ca[0]);
+                      }}
+                      data-testid={`category-${cat}`}
+                    >{cat}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="overflow-y-auto flex-grow px-2 pb-2 space-y-0.5 custom-scrollbar">
+                {filteredAssets.map(asset => {
+                  const price = getCurrentPrice(asset.symbol, asset.asset_type);
+                  const change = getChange24h(asset.symbol, asset.asset_type);
+                  const pos = change >= 0;
+                  const sel = selectedAsset?.symbol === asset.symbol;
+                  return (
+                    <div key={asset.symbol}
+                      className={`px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
+                        sel ? 'bg-electric/10 border border-electric/20' : 'hover:bg-white/[0.03] border border-transparent'
+                      }`}
+                      onClick={() => setSelectedAsset(asset)}
+                      data-testid={`asset-${asset.symbol}`}
+                    >
+                      <div className="flex justify-between items-center">
                         <div>
-                          <div className={`font-semibold ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                            {asset.symbol}
+                          <div className={`text-xs font-semibold ${sel ? 'text-white' : 'text-gray-300'}`}>{asset.symbol}</div>
+                          <div className="text-[9px] text-gray-600">{Math.round(asset.payout_rate * 100)}% payout</div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-mono text-xs font-medium ${pos ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {formatPrice(price, asset.asset_type)}
                           </div>
-                          <div className="text-[10px] text-gray-500">{Math.round(asset.payout_rate * 100)}% payout</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-mono text-sm font-medium ${isPositive ? 'text-neon' : 'text-vibrant'}`}>
-                          {formatPrice(price, asset.asset_type)}
-                        </div>
-                        <div className={`text-xs flex items-center justify-end gap-0.5 ${isPositive ? 'text-neon' : 'text-vibrant'}`}>
-                          {isPositive ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-                          {Math.abs(change).toFixed(2)}%
+                          <div className={`text-[9px] ${pos ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {pos ? '+' : ''}{change.toFixed(2)}%
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-
-          {/* Center Panel: Chart */}
-          <motion.div 
-            className="lg:col-span-6 glass-panel rounded-2xl flex flex-col relative overflow-hidden h-[350px] lg:h-[520px]"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            {/* Chart Header */}
-            <div className="p-4 border-b border-white/5 bg-gradient-to-r from-space-light to-transparent flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h2 className="text-xl font-display font-bold text-white">
-                    {selectedAsset?.symbol || 'Select Asset'}
-                  </h2>
-                  <div className="text-xs text-gray-500">{selectedAsset?.name}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className={`font-mono text-2xl font-bold ${getChange24h() >= 0 ? 'text-neon' : 'text-vibrant'}`}>
-                  {formatPrice(getCurrentPrice(), selectedAsset?.asset_type)}
-                </div>
-                <div className={`text-sm flex items-center justify-end gap-1 ${getChange24h() >= 0 ? 'text-neon' : 'text-vibrant'}`}>
-                  {getChange24h() >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {getChange24h() >= 0 ? '+' : ''}{getChange24h().toFixed(2)}%
-                </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Chart */}
-            <div className="flex-grow relative">
-              <TradingChart 
-                asset={selectedAsset?.symbol}
-                currentPrice={getCurrentPrice()}
-                assetType={selectedAsset?.asset_type}
-              />
+            {/* Center: Chart */}
+            <div className="lg:col-span-7 bg-white/[0.02] rounded-xl border border-white/[0.04] flex flex-col h-[460px] overflow-hidden">
+              {/* Chart Header */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.04]">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <span className="text-base font-bold text-white">{selectedAsset?.symbol || 'Select Asset'}</span>
+                    <span className="text-[10px] text-gray-600 ml-2">{selectedAsset?.name}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className={`font-mono text-lg font-bold ${isPositiveChange ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {formatPrice(currentPriceVal, selectedAsset?.asset_type)}
+                    </span>
+                    <span className={`ml-2 text-xs font-mono ${isPositiveChange ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {isPositiveChange ? '+' : ''}{currentChange.toFixed(2)}%
+                    </span>
+                  </div>
+                  {/* Live indicator */}
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <span className="text-[9px] text-gray-600 uppercase">Live</span>
+                  </div>
+                </div>
+              </div>
+              {/* Chart Body */}
+              <div className="flex-grow relative">
+                <TradingChart 
+                  asset={selectedAsset?.symbol}
+                  currentPrice={currentPriceVal}
+                  assetType={selectedAsset?.asset_type}
+                />
+              </div>
             </div>
-          </motion.div>
 
-          {/* Right Panel: Trade Execution with AI Predictions */}
-          <motion.div 
-            className="lg:col-span-3 glass-panel rounded-2xl flex flex-col h-[450px] lg:h-[520px] overflow-hidden"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="p-4 bg-gradient-to-r from-vibrant/10 to-electric/10 border-b border-white/5">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Target className="w-4 h-4 text-electric" /> Quick Trade
+            {/* Right: Trade Panel */}
+            <div className="lg:col-span-3 bg-white/[0.02] rounded-xl border border-white/[0.04] flex flex-col h-[460px] overflow-hidden">
+              {/* Trade Header */}
+              <div className="px-4 py-2.5 border-b border-white/[0.04] flex justify-between items-center">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-electric" /> TRADE
                 </span>
-                <span className="text-xs text-neon bg-neon/10 px-2 py-1 rounded-full border border-neon/20 flex items-center gap-1">
-                  <Zap className="w-3 h-3" />
-                  {Math.round((selectedAsset?.payout_rate || 0.85) * 100)}%
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                  {Math.round((selectedAsset?.payout_rate || 0.85) * 100)}% return
                 </span>
               </div>
-              
-              {/* Amount with Quick Buttons */}
-              <div className="space-y-2">
-                <div className="bg-space-dark/50 rounded-xl p-3 border border-white/5">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-400">Investment</span>
-                    <span className="text-xs text-gray-500">Max: ${(user?.balance || 0).toFixed(0)}</span>
+
+              {/* Amount */}
+              <div className="px-4 pt-3 pb-2 space-y-2">
+                <div className="bg-black/20 rounded-lg p-2.5 border border-white/[0.04]">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Amount</span>
+                    <span className="text-[10px] text-gray-600">Max: ${(user?.balance || 0).toFixed(0)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <button 
-                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                      onClick={() => setTradeAmount(Math.max(1, tradeAmount - 25))}
-                    >
-                      <Minus className="w-4 h-4" />
+                    <button className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 transition-colors"
+                      onClick={() => setTradeAmount(Math.max(1, tradeAmount - 25))}>
+                      <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <input 
-                      type="number" 
-                      value={tradeAmount}
-                      onChange={(e) => setTradeAmount(Math.max(1, parseFloat(e.target.value) || 0))}
-                      className="bg-transparent text-center font-mono text-2xl text-white w-28 focus:outline-none"
-                      data-testid="trade-amount"
-                    />
-                    <button 
-                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                      onClick={() => setTradeAmount(tradeAmount + 25)}
-                    >
-                      <Plus className="w-4 h-4" />
+                    <div className="flex items-center">
+                      <DollarSign className="w-4 h-4 text-gray-600" />
+                      <input type="number" value={tradeAmount}
+                        onChange={(e) => setTradeAmount(Math.max(1, parseFloat(e.target.value) || 0))}
+                        className="bg-transparent text-center font-mono text-xl text-white w-20 focus:outline-none"
+                        data-testid="trade-amount" />
+                    </div>
+                    <button className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 transition-colors"
+                      onClick={() => setTradeAmount(tradeAmount + 25)}>
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Quick Amount Pills */}
+                {/* Quick Amounts */}
                 <div className="flex gap-1">
                   {[25, 50, 100, 250, 500].map(amt => (
-                    <button
-                      key={amt}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        tradeAmount === amt
-                          ? 'bg-electric text-space'
-                          : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                    <button key={amt}
+                      className={`flex-1 py-1 rounded-md text-[10px] font-mono font-bold transition-all ${
+                        tradeAmount === amt ? 'bg-electric text-white' : 'bg-white/[0.03] text-gray-500 hover:bg-white/[0.06] hover:text-white'
                       }`}
-                      onClick={() => setTradeAmount(amt)}
-                    >
-                      ${amt}
-                    </button>
+                      onClick={() => setTradeAmount(amt)}>${amt}</button>
                   ))}
                 </div>
-              </div>
 
-              {/* Expiry Time Pills */}
-              <div className="mt-3">
-                <span className="text-xs text-gray-400 mb-2 block">Duration</span>
-                <div className="flex gap-1">
-                  {expiryOptions.map(opt => (
-                    <button
-                      key={opt.value}
-                      className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                        expiryTime === opt.value
-                          ? 'bg-gradient-to-r from-electric to-neon text-space'
-                          : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                      onClick={() => setExpiryTime(opt.value)}
-                      data-testid={`expiry-${opt.value}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Potential Profit Display */}
-            <div className="px-4 py-3 bg-gradient-to-r from-neon/5 to-transparent border-b border-white/5">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-400">Potential Profit</span>
-                <span className="font-mono text-xl text-neon font-bold" data-testid="potential-payout">
-                  +${(potentialPayout - tradeAmount).toFixed(2)}
-                </span>
-              </div>
-            </div>
-            
-            {/* AI Prediction Display */}
-            <div className="px-4 py-3 border-b border-white/5">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-amber" />
-                <span className="text-xs text-gray-400">AI Analysis</span>
-                {predictionLoading && (
-                  <div className="w-3 h-3 border border-amber border-t-transparent rounded-full animate-spin"></div>
-                )}
-              </div>
-              {prediction.reasoning && (
-                <p className="text-[10px] text-gray-500 italic mb-2">{prediction.reasoning}</p>
-              )}
-            </div>
-
-            {/* BUY/SELL Buttons with AI Percentages */}
-            <div className="p-4 flex-grow flex flex-col justify-center gap-3">
-              <motion.button 
-                className="relative overflow-hidden group py-5 rounded-2xl bg-gradient-to-r from-neon/20 to-neon/5 border-2 border-neon/40 hover:border-neon transition-all disabled:opacity-50"
-                onClick={() => placeTrade('buy')}
-                disabled={submitting || !selectedAsset}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                data-testid="buy-btn"
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-neon/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-neon to-transparent opacity-50"></div>
-                <div className="flex items-center justify-between px-4 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-neon/20 flex items-center justify-center">
-                      <ArrowUp className="w-6 h-6 text-neon" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-display font-bold text-neon text-xl">BUY</div>
-                      <div className="text-[10px] text-neon/70">Price will rise</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-3xl font-bold text-neon">{prediction.buy_confidence}%</div>
-                    <div className="text-[10px] text-neon/70">confidence</div>
+                {/* Duration */}
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Duration</span>
+                  <div className="flex gap-1">
+                    {expiryOptions.map(opt => (
+                      <button key={opt.value}
+                        className={`flex-1 py-1.5 rounded-md text-[10px] font-mono font-bold transition-all ${
+                          expiryTime === opt.value ? 'bg-electric text-white' : 'bg-white/[0.03] text-gray-500 hover:bg-white/[0.06] hover:text-white'
+                        }`}
+                        onClick={() => setExpiryTime(opt.value)}
+                        data-testid={`expiry-${opt.value}`}>{opt.label}</button>
+                    ))}
                   </div>
                 </div>
-              </motion.button>
-              
-              <motion.button 
-                className="relative overflow-hidden group py-5 rounded-2xl bg-gradient-to-r from-vibrant/20 to-vibrant/5 border-2 border-vibrant/40 hover:border-vibrant transition-all disabled:opacity-50"
-                onClick={() => placeTrade('sell')}
-                disabled={submitting || !selectedAsset}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                data-testid="sell-btn"
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-vibrant/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-vibrant to-transparent opacity-50"></div>
-                <div className="flex items-center justify-between px-4 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-vibrant/20 flex items-center justify-center">
-                      <ArrowDown className="w-6 h-6 text-vibrant" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-display font-bold text-vibrant text-xl">SELL</div>
-                      <div className="text-[10px] text-vibrant/70">Price will fall</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-3xl font-bold text-vibrant">{prediction.sell_confidence}%</div>
-                    <div className="text-[10px] text-vibrant/70">confidence</div>
-                  </div>
-                </div>
-              </motion.button>
-            </div>
-          </motion.div>
 
-          {/* Bottom Panel: Open Positions & History */}
-          <motion.div 
-            className="lg:col-span-12 glass-panel rounded-2xl overflow-hidden"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="flex border-b border-white/5 bg-gradient-to-r from-space-light to-transparent px-4 pt-3">
-              <button 
-                className={`px-6 py-3 text-sm font-semibold transition-all relative ${
-                  !showHistory ? 'text-white' : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => setShowHistory(false)}
-                data-testid="open-trades-tab"
-              >
-                Active Trades
-                {openTrades.length > 0 && (
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-neon/20 text-neon text-xs">
-                    {openTrades.length}
+                {/* Profit Display */}
+                <div className="flex justify-between items-center bg-emerald-500/5 rounded-lg px-3 py-1.5 border border-emerald-500/10">
+                  <span className="text-[10px] text-gray-500">Profit</span>
+                  <span className="font-mono text-sm text-emerald-400 font-bold" data-testid="potential-payout">
+                    +${(potentialPayout - tradeAmount).toFixed(2)}
                   </span>
+                </div>
+              </div>
+
+              {/* AI Signal */}
+              <div className="px-4 py-2 border-t border-white/[0.04]">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider">AI Signal</span>
+                  {predictionLoading && <div className="w-2.5 h-2.5 border border-amber-400 border-t-transparent rounded-full animate-spin"></div>}
+                </div>
+                {prediction.reasoning && (
+                  <p className="text-[9px] text-gray-600 leading-relaxed line-clamp-2">{prediction.reasoning}</p>
                 )}
-                {!showHistory && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-electric to-neon"></div>}
-              </button>
-              <button 
-                className={`px-6 py-3 text-sm font-semibold transition-all relative ${
-                  showHistory ? 'text-white' : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => setShowHistory(true)}
-                data-testid="history-tab"
-              >
-                History
-                {showHistory && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-electric to-neon"></div>}
-              </button>
+              </div>
+
+              {/* BUY / SELL Buttons - Side by Side */}
+              <div className="px-4 pb-3 mt-auto flex gap-2">
+                <motion.button
+                  className="flex-1 relative overflow-hidden rounded-xl py-3 group transition-all disabled:opacity-40"
+                  style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.05) 100%)', border: '1px solid rgba(16,185,129,0.25)' }}
+                  onClick={() => placeTrade('buy')}
+                  disabled={submitting || !selectedAsset}
+                  whileHover={{ scale: 1.02, borderColor: 'rgba(16,185,129,0.6)' }}
+                  whileTap={{ scale: 0.97 }}
+                  data-testid="buy-btn"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <ArrowUp className="w-4 h-4 text-emerald-400" />
+                      <span className="font-bold text-emerald-400 text-sm">BUY</span>
+                    </div>
+                    <span className="font-mono text-2xl font-black text-emerald-300">{prediction.buy_confidence}%</span>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  className="flex-1 relative overflow-hidden rounded-xl py-3 group transition-all disabled:opacity-40"
+                  style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.05) 100%)', border: '1px solid rgba(239,68,68,0.25)' }}
+                  onClick={() => placeTrade('sell')}
+                  disabled={submitting || !selectedAsset}
+                  whileHover={{ scale: 1.02, borderColor: 'rgba(239,68,68,0.6)' }}
+                  whileTap={{ scale: 0.97 }}
+                  data-testid="sell-btn"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-red-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <ArrowDown className="w-4 h-4 text-red-400" />
+                      <span className="font-bold text-red-400 text-sm">SELL</span>
+                    </div>
+                    <span className="font-mono text-2xl font-black text-red-300">{prediction.sell_confidence}%</span>
+                  </div>
+                </motion.button>
+              </div>
             </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-xs text-gray-500 border-b border-white/5">
-                    <th className="p-4 font-medium">Asset</th>
-                    <th className="p-4 font-medium">Direction</th>
-                    <th className="p-4 font-medium">Strike</th>
-                    <th className="p-4 font-medium">Current</th>
-                    <th className="p-4 font-medium">Amount</th>
-                    <th className="p-4 font-medium">{showHistory ? 'Result' : 'Countdown'}</th>
-                    <th className="p-4 font-medium text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {(showHistory ? tradeHistory : openTrades).slice(0, 10).map((trade, index) => {
-                      const timeLeftMs = getTimeLeft(trade.expiry_time);
-                      const currentPrice = getCurrentPrice(trade.asset, trade.asset_type);
-                      const isWinning = trade.direction === 'buy' || trade.direction === 'call' 
-                        ? currentPrice > trade.strike_price 
-                        : currentPrice < trade.strike_price;
-                      const progress = Math.min(100, (timeLeftMs / (trade.expiry_seconds * 1000)) * 100);
-                      
+
+            {/* Bottom: Trades Table */}
+            <div className="lg:col-span-12 bg-white/[0.02] rounded-xl border border-white/[0.04] overflow-hidden">
+              <div className="flex border-b border-white/[0.04] px-4">
+                <button className={`px-4 py-2.5 text-xs font-semibold transition-all relative ${
+                  !showHistory ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  onClick={() => setShowHistory(false)} data-testid="open-trades-tab">
+                  Active Trades
+                  {openTrades.length > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-mono">
+                      {openTrades.length}
+                    </span>
+                  )}
+                  {!showHistory && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-electric"></div>}
+                </button>
+                <button className={`px-4 py-2.5 text-xs font-semibold transition-all relative ${
+                  showHistory ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  onClick={() => setShowHistory(true)} data-testid="history-tab">
+                  History
+                  {showHistory && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-electric"></div>}
+                </button>
+              </div>
+
+              <div className="overflow-x-auto max-h-[200px]">
+                <table className="w-full text-left">
+                  <thead className="sticky top-0 bg-[#0a0f1a]">
+                    <tr className="text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/[0.04]">
+                      <th className="px-4 py-2 font-medium">Asset</th>
+                      <th className="px-4 py-2 font-medium">Type</th>
+                      <th className="px-4 py-2 font-medium">Entry</th>
+                      <th className="px-4 py-2 font-medium">Current</th>
+                      <th className="px-4 py-2 font-medium">Amount</th>
+                      <th className="px-4 py-2 font-medium">{showHistory ? 'P&L' : 'Time'}</th>
+                      <th className="px-4 py-2 font-medium text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(showHistory ? tradeHistory : openTrades).slice(0, 10).map((trade) => {
+                      const tl = getTimeLeft(trade.expiry_time);
+                      const cp = getCurrentPrice(trade.asset, trade.asset_type);
+                      const isWin = (trade.direction === 'buy' || trade.direction === 'call')
+                        ? cp > trade.strike_price : cp < trade.strike_price;
+                      const prog = Math.min(100, (tl / (trade.expiry_seconds * 1000)) * 100);
+
                       return (
-                        <motion.tr 
-                          key={trade.id} 
-                          className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ delay: index * 0.05 }}
-                        >
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-2 h-8 rounded-full ${
-                                trade.direction === 'buy' || trade.direction === 'call' ? 'bg-neon' : 'bg-vibrant'
-                              }`}></div>
-                              <span className="font-semibold text-white">{trade.asset}</span>
-                            </div>
+                        <tr key={trade.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors text-xs">
+                          <td className="px-4 py-2">
+                            <span className="font-semibold text-white">{trade.asset}</span>
                           </td>
-                          <td className="p-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              trade.direction === 'buy' || trade.direction === 'call' 
-                                ? 'bg-neon/20 text-neon' 
-                                : 'bg-vibrant/20 text-vibrant'
+                          <td className="px-4 py-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              (trade.direction === 'buy' || trade.direction === 'call')
+                                ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
                             }`}>
                               {trade.direction === 'call' ? 'BUY' : trade.direction === 'put' ? 'SELL' : trade.direction.toUpperCase()}
                             </span>
                           </td>
-                          <td className="p-4 font-mono text-gray-300">{formatPrice(trade.strike_price, trade.asset_type)}</td>
-                          <td className={`p-4 font-mono font-semibold ${
-                            trade.status === 'open' 
-                              ? (isWinning ? 'text-neon' : 'text-vibrant') 
-                              : 'text-gray-400'
+                          <td className="px-4 py-2 font-mono text-gray-400">{formatPrice(trade.strike_price, trade.asset_type)}</td>
+                          <td className={`px-4 py-2 font-mono font-medium ${
+                            trade.status === 'open' ? (isWin ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500'
                           }`}>
-                            {trade.status === 'open' ? formatPrice(currentPrice, trade.asset_type) : formatPrice(trade.close_price, trade.asset_type)}
+                            {trade.status === 'open' ? formatPrice(cp, trade.asset_type) : formatPrice(trade.close_price, trade.asset_type)}
                           </td>
-                          <td className="p-4 font-mono text-white font-semibold">${trade.amount.toFixed(2)}</td>
-                          <td className="p-4">
+                          <td className="px-4 py-2 font-mono text-white">${trade.amount.toFixed(2)}</td>
+                          <td className="px-4 py-2">
                             {showHistory ? (
-                              <span className={`font-mono font-bold ${trade.profit >= 0 ? 'text-neon' : 'text-vibrant'}`}>
+                              <span className={`font-mono font-bold ${trade.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {trade.profit >= 0 ? '+' : ''}${trade.profit?.toFixed(2)}
                               </span>
                             ) : (
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                  <Clock className={`w-4 h-4 ${timeLeftMs > 10000 ? 'text-amber' : 'text-vibrant animate-pulse'}`} />
-                                  <span className={`font-mono font-bold text-lg ${timeLeftMs > 10000 ? 'text-amber' : 'text-vibrant'}`}>
-                                    {formatTimeLeft(timeLeftMs)}
-                                  </span>
-                                </div>
-                                <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
-                                  <motion.div 
-                                    className={`h-full rounded-full ${timeLeftMs > 10000 ? 'bg-gradient-to-r from-amber to-amber/50' : 'bg-gradient-to-r from-vibrant to-vibrant/50'}`}
-                                    initial={{ width: '100%' }}
-                                    animate={{ width: `${progress}%` }}
-                                    transition={{ duration: 0.1 }}
-                                  />
+                              <div className="flex items-center gap-2">
+                                <span className={`font-mono font-bold ${tl > 10000 ? 'text-amber-400' : 'text-red-400'}`}>
+                                  {formatTimeLeft(tl)}
+                                </span>
+                                <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all ${tl > 10000 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                    style={{ width: `${prog}%` }} />
                                 </div>
                               </div>
                             )}
                           </td>
-                          <td className="p-4 text-right">
+                          <td className="px-4 py-2 text-right">
                             {trade.status === 'open' ? (
-                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                                isWinning 
-                                  ? 'bg-neon/20 text-neon border border-neon/30' 
-                                  : 'bg-vibrant/20 text-vibrant border border-vibrant/30'
-                              }`}>
-                                {isWinning ? '▲ WINNING' : '▼ LOSING'}
+                              <span className={`text-[10px] font-bold ${isWin ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {isWin ? 'WINNING' : 'LOSING'}
                               </span>
                             ) : (
-                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                                trade.status === 'won' 
-                                  ? 'bg-neon/20 text-neon border border-neon/30' 
-                                  : 'bg-vibrant/20 text-vibrant border border-vibrant/30'
+                              <span className={`text-[10px] font-bold ${
+                                trade.status === 'won' ? 'text-emerald-400' : 'text-red-400'
                               }`}>
-                                {trade.status === 'won' ? `✓ +$${(trade.amount * trade.payout_rate).toFixed(2)}` : `✗ -$${trade.amount.toFixed(2)}`}
+                                {trade.status === 'won' ? `+$${(trade.amount * trade.payout_rate).toFixed(2)}` : `-$${trade.amount.toFixed(2)}`}
                               </span>
                             )}
                           </td>
-                        </motion.tr>
+                        </tr>
                       );
                     })}
-                  </AnimatePresence>
-                  {(showHistory ? tradeHistory : openTrades).length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="p-12 text-center">
-                        <div className="flex flex-col items-center gap-3 text-gray-500">
-                          <Activity className="w-12 h-12 opacity-30" />
-                          <p>{showHistory ? 'No trade history yet' : 'No active trades'}</p>
-                          <p className="text-xs">Place your first trade to get started!</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    {(showHistory ? tradeHistory : openTrades).length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center">
+                          <div className="text-gray-600 text-xs">
+                            <Activity className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                            {showHistory ? 'No trade history' : 'No active trades'}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </main>
 
@@ -870,94 +624,57 @@ const Dashboard = () => {
       <div className="fixed bottom-4 right-4 z-50">
         <AnimatePresence>
           {chatOpen && (
-            <motion.div 
-              className="absolute bottom-16 right-0 w-80 h-[420px] glass-panel rounded-2xl flex flex-col overflow-hidden shadow-2xl shadow-electric/20"
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            >
-              <div className="p-4 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-electric/20 to-vibrant/20">
+            <motion.div className="absolute bottom-14 right-0 w-72 h-96 bg-[#0d1220] rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-white/10"
+              initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }}>
+              <div className="px-3 py-2.5 border-b border-white/5 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-electric to-neon flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-space" />
-                  </div>
-                  <span className="text-sm font-semibold text-white">AI Assistant</span>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white">AI Assistant</span>
                 </div>
-                <button onClick={() => setChatOpen(false)} className="text-gray-400 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setChatOpen(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
               </div>
-              
-              <div className="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              <div className="flex-grow overflow-y-auto p-3 space-y-2 custom-scrollbar">
                 {chatMessages.length === 0 && (
-                  <div className="text-center text-gray-500 text-sm py-8">
-                    <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p>Ask me anything about trading!</p>
-                    <p className="text-xs mt-1">Market analysis • Strategy tips • Platform help</p>
+                  <div className="text-center text-gray-600 text-xs py-8">
+                    <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    <p>Ask about trading</p>
                   </div>
                 )}
                 {chatMessages.map((msg, i) => (
-                  <motion.div 
-                    key={i} 
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                      msg.role === 'user' 
-                        ? 'bg-gradient-to-r from-electric to-neon text-space font-medium' 
-                        : 'bg-white/10 text-gray-200'
-                    }`}>
-                      {msg.content}
-                    </div>
-                  </motion.div>
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs ${
+                      msg.role === 'user' ? 'bg-electric text-white' : 'bg-white/5 text-gray-300'
+                    }`}>{msg.content}</div>
+                  </div>
                 ))}
                 {chatLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-white/10 rounded-2xl px-4 py-3">
-                      <div className="flex gap-1.5">
-                        <div className="w-2 h-2 bg-electric rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-neon rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-2 h-2 bg-vibrant rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                      </div>
+                    <div className="bg-white/5 rounded-xl px-3 py-2 flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{animationDelay:'0.1s'}}></div>
+                      <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{animationDelay:'0.2s'}}></div>
                     </div>
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
-              
-              <form onSubmit={sendChatMessage} className="p-4 border-t border-white/10 bg-space-dark/50">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask anything..."
-                    className="flex-grow input-field text-sm py-2.5 rounded-xl"
-                    data-testid="chat-input"
-                  />
-                  <button 
-                    type="submit" 
-                    disabled={chatLoading || !chatInput.trim()}
-                    className="p-2.5 rounded-xl bg-gradient-to-r from-electric to-neon text-space disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-electric/30"
-                    data-testid="chat-send"
-                  >
-                    <Send className="w-5 h-5" />
+              <form onSubmit={sendChatMessage} className="p-2 border-t border-white/5">
+                <div className="flex gap-1.5">
+                  <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask anything..." className="flex-grow bg-white/5 border border-white/5 rounded-lg py-2 px-3 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-electric/50" data-testid="chat-input" />
+                  <button type="submit" disabled={chatLoading || !chatInput.trim()}
+                    className="p-2 rounded-lg bg-electric text-white disabled:opacity-30" data-testid="chat-send">
+                    <Send className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </form>
             </motion.div>
           )}
         </AnimatePresence>
-        
-        <motion.button
-          onClick={() => setChatOpen(!chatOpen)}
-          className="w-14 h-14 rounded-2xl bg-gradient-to-br from-electric via-neon to-vibrant flex items-center justify-center shadow-lg transition-all"
-          whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(42,245,255,0.5)' }}
-          whileTap={{ scale: 0.95 }}
-          data-testid="chat-toggle"
-        >
-          {chatOpen ? <X className="w-6 h-6 text-space" /> : <MessageCircle className="w-6 h-6 text-space" />}
+        <motion.button onClick={() => setChatOpen(!chatOpen)}
+          className="w-11 h-11 rounded-xl bg-electric/90 flex items-center justify-center shadow-lg shadow-electric/20 hover:shadow-electric/40 transition-shadow"
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} data-testid="chat-toggle">
+          {chatOpen ? <X className="w-5 h-5 text-white" /> : <MessageCircle className="w-5 h-5 text-white" />}
         </motion.button>
       </div>
     </div>

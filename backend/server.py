@@ -197,10 +197,10 @@ forex_cache = {
 
 metals_cache = {
     "prices": {
-        "XAU/USD": {"price": 4865.50, "change_24h": 0.85},   # Gold ~$4865
-        "XAG/USD": {"price": 58.45, "change_24h": 1.23},      # Silver ~$58
-        "XPT/USD": {"price": 1285.30, "change_24h": -0.42},   # Platinum ~$1285
-        "XPD/USD": {"price": 1445.80, "change_24h": 0.67}     # Palladium ~$1445
+        "XAU/USD": {"price": 4818.00, "change_24h": 0.85},
+        "XAG/USD": {"price": 32.85, "change_24h": 1.23},
+        "XPT/USD": {"price": 1025.50, "change_24h": -0.42},
+        "XPD/USD": {"price": 985.30, "change_24h": 0.67}
     },
     "last_fetch": None
 }
@@ -291,18 +291,46 @@ async def fetch_forex_prices() -> Dict[str, Any]:
     return result
 
 async def fetch_metals_prices() -> Dict[str, Any]:
-    """Fetch precious metals prices with realistic data"""
+    """Fetch precious metals prices using same currency API as forex, fallback to cache"""
     global metals_cache
-    
-    # Always use cached data with micro-fluctuations for reliable pricing
-    # Gold around $2300-2400, Silver around $27-28, Platinum around $980-1000
+
+    now = datetime.now(timezone.utc)
+
+    # Try live API every 60 seconds using the same reliable currency API
+    if not metals_cache.get("last_fetch") or (now - metals_cache["last_fetch"]).seconds >= 60:
+        try:
+            async with httpx.AsyncClient() as http_client:
+                response = await http_client.get(
+                    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
+                    timeout=5.0
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    usd_rates = data.get("usd", {})
+                    # XAU and XAG are in troy ounces per USD
+                    xau_rate = usd_rates.get("xau", 0)
+                    xag_rate = usd_rates.get("xag", 0)
+                    if xau_rate and xau_rate > 0:
+                        gold_price = round(1 / xau_rate, 2)
+                        if gold_price > 1000:
+                            metals_cache["prices"]["XAU/USD"]["price"] = gold_price
+                            logger.info(f"Gold price from live API: ${gold_price}")
+                    if xag_rate and xag_rate > 0:
+                        silver_price = round(1 / xag_rate, 2)
+                        if silver_price > 10:
+                            metals_cache["prices"]["XAG/USD"]["price"] = silver_price
+                            logger.info(f"Silver price from live API: ${silver_price}")
+                    metals_cache["last_fetch"] = now
+        except Exception as e:
+            logger.warning(f"Metals live API error: {e}, using cached data")
+
     result = {}
     for metal, data in metals_cache["prices"].items():
-        fluctuation = random.uniform(-0.0008, 0.0008)
+        fluctuation = random.uniform(-0.0005, 0.0005)
         new_price = data["price"] * (1 + fluctuation)
         result[metal] = {
             "price": round(new_price, 2),
-            "change_24h": data["change_24h"]
+            "change_24h": round(data["change_24h"] + random.uniform(-0.05, 0.05), 2)
         }
     return result
 
