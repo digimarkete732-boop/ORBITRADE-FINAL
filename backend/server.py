@@ -77,9 +77,9 @@ class TwoFactorVerify(BaseModel):
 
 class TradeCreate(BaseModel):
     asset: str
-    direction: str  # "call" or "put"
+    direction: str  # "buy" or "sell"
     amount: float
-    expiry_seconds: int  # 60, 300, 900, 3600
+    expiry_seconds: int  # 5, 10, 15, 30, 60
 
 class DepositCreate(BaseModel):
     amount: float
@@ -166,169 +166,144 @@ def serialize_doc(doc: dict) -> dict:
 
 # ==================== MARKET DATA FUNCTIONS ====================
 
+# Price caches with realistic base prices
+crypto_cache = {
+    "prices": {
+        "bitcoin": {"usd": 67542.50, "usd_24h_change": 2.35},
+        "ethereum": {"usd": 3456.78, "usd_24h_change": 1.82},
+        "ripple": {"usd": 0.5234, "usd_24h_change": -0.45},
+        "litecoin": {"usd": 84.56, "usd_24h_change": 1.23},
+        "cardano": {"usd": 0.4521, "usd_24h_change": 0.87},
+        "polkadot": {"usd": 7.234, "usd_24h_change": -1.12},
+        "dogecoin": {"usd": 0.1234, "usd_24h_change": 3.45},
+        "solana": {"usd": 142.87, "usd_24h_change": 2.67}
+    },
+    "last_fetch": None
+}
+
+forex_cache = {
+    "prices": {
+        "EUR/USD": {"price": 1.0945, "change_24h": 0.23},
+        "GBP/USD": {"price": 1.2673, "change_24h": -0.15},
+        "USD/JPY": {"price": 149.85, "change_24h": 0.42},
+        "AUD/USD": {"price": 0.6542, "change_24h": 0.18},
+        "USD/CAD": {"price": 1.3654, "change_24h": -0.28},
+        "USD/CHF": {"price": 0.8876, "change_24h": 0.12},
+        "NZD/USD": {"price": 0.5987, "change_24h": -0.35},
+        "EUR/GBP": {"price": 0.8636, "change_24h": 0.08}
+    },
+    "last_fetch": None
+}
+
+metals_cache = {
+    "prices": {
+        "XAU/USD": {"price": 2325.50, "change_24h": 0.85},
+        "XAG/USD": {"price": 27.45, "change_24h": 1.23},
+        "XPT/USD": {"price": 985.30, "change_24h": -0.42},
+        "XPD/USD": {"price": 1045.80, "change_24h": 0.67}
+    },
+    "last_fetch": None
+}
+
 async def fetch_crypto_prices() -> Dict[str, Any]:
-    """Fetch cryptocurrency prices from CoinGecko"""
+    """Fetch cryptocurrency prices - with fallback to cached realistic data"""
+    global crypto_cache
+    
+    now = datetime.now(timezone.utc)
+    
+    # Try to fetch from CoinGecko first
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 "https://api.coingecko.com/api/v3/simple/price",
                 params={
-                    "ids": "bitcoin,ethereum,ripple,litecoin,cardano,polkadot,dogecoin,solana,binancecoin,avalanche-2",
+                    "ids": "bitcoin,ethereum,ripple,litecoin,cardano,polkadot,dogecoin,solana",
                     "vs_currencies": "usd",
                     "include_24hr_change": "true"
                 },
-                timeout=10.0
-            )
-            if response.status_code == 200:
-                return response.json()
-    except Exception as e:
-        logger.error(f"Error fetching crypto prices: {e}")
-    return {}
-
-# Store last fetched rates to avoid excessive API calls
-forex_rates_cache = {"rates": {}, "last_fetch": None, "base_prices": {}}
-metals_rates_cache = {"rates": {}, "last_fetch": None}
-
-async def fetch_forex_prices() -> Dict[str, Any]:
-    """Fetch forex prices from free exchange API"""
-    global forex_rates_cache
-    
-    # Fetch new rates every 60 seconds
-    now = datetime.now(timezone.utc)
-    if forex_rates_cache["last_fetch"] and (now - forex_rates_cache["last_fetch"]).seconds < 60:
-        # Apply small fluctuation to cached rates for real-time feel
-        result = {}
-        for pair, data in forex_rates_cache["rates"].items():
-            fluctuation = random.uniform(-0.0002, 0.0002)
-            price = data["base_price"] * (1 + fluctuation)
-            result[pair] = {
-                "price": round(price, 5),
-                "change_24h": data["change_24h"]
-            }
-        return result
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            # Fetch USD base rates from free API (no key required)
-            response = await client.get(
-                "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
-                timeout=10.0
+                timeout=5.0
             )
             if response.status_code == 200:
                 data = response.json()
-                usd_rates = data.get("usd", {})
-                
-                # Calculate forex pairs
-                pairs = {
-                    "EUR/USD": 1 / usd_rates.get("eur", 0.92) if usd_rates.get("eur") else 1.0945,
-                    "GBP/USD": 1 / usd_rates.get("gbp", 0.79) if usd_rates.get("gbp") else 1.2673,
-                    "USD/JPY": usd_rates.get("jpy", 149.85),
-                    "AUD/USD": 1 / usd_rates.get("aud", 1.53) if usd_rates.get("aud") else 0.6542,
-                    "USD/CAD": usd_rates.get("cad", 1.3654),
-                    "USD/CHF": usd_rates.get("chf", 0.8876),
-                    "NZD/USD": 1 / usd_rates.get("nzd", 1.67) if usd_rates.get("nzd") else 0.5987,
-                    "EUR/GBP": usd_rates.get("gbp", 0.79) / usd_rates.get("eur", 0.92) if usd_rates.get("eur") else 0.8636
-                }
-                
-                result = {}
-                for pair, price in pairs.items():
-                    change_24h = round(random.uniform(-0.8, 0.8), 2)
-                    result[pair] = {
-                        "price": round(price, 5),
-                        "change_24h": change_24h,
-                        "base_price": price
-                    }
-                
-                forex_rates_cache["rates"] = result
-                forex_rates_cache["last_fetch"] = now
-                logger.info("Forex rates fetched from live API")
-                return {k: {"price": v["price"], "change_24h": v["change_24h"]} for k, v in result.items()}
-                
+                if data:
+                    crypto_cache["prices"] = data
+                    crypto_cache["last_fetch"] = now
+                    logger.info("Crypto prices fetched from CoinGecko")
+                    return data
     except Exception as e:
-        logger.error(f"Error fetching forex prices: {e}")
+        logger.warning(f"CoinGecko API error: {e}, using cached data")
     
-    # Fallback to realistic simulated data
-    base_prices = {
-        "EUR/USD": 1.0945, "GBP/USD": 1.2673, "USD/JPY": 149.85, "AUD/USD": 0.6542,
-        "USD/CAD": 1.3654, "USD/CHF": 0.8876, "NZD/USD": 0.5987, "EUR/GBP": 0.8636
-    }
+    # Return cached data with realistic fluctuations
     result = {}
-    for pair, base_price in base_prices.items():
-        change = random.uniform(-0.0015, 0.0015)
-        price = base_price * (1 + change)
-        result[pair] = {"price": round(price, 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)}
+    for coin, data in crypto_cache["prices"].items():
+        base_price = data.get("usd", 0)
+        fluctuation = random.uniform(-0.002, 0.002)
+        new_price = base_price * (1 + fluctuation)
+        result[coin] = {
+            "usd": round(new_price, 2),
+            "usd_24h_change": round(data.get("usd_24h_change", 0) + random.uniform(-0.1, 0.1), 2)
+        }
+    return result
+
+async def fetch_forex_prices() -> Dict[str, Any]:
+    """Fetch forex prices with live API and realistic fallback"""
+    global forex_cache
+    
+    now = datetime.now(timezone.utc)
+    
+    # Try live API every 30 seconds
+    if not forex_cache["last_fetch"] or (now - forex_cache["last_fetch"]).seconds >= 30:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
+                    timeout=5.0
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    usd_rates = data.get("usd", {})
+                    
+                    if usd_rates:
+                        forex_cache["prices"] = {
+                            "EUR/USD": {"price": round(1 / usd_rates.get("eur", 0.92), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "GBP/USD": {"price": round(1 / usd_rates.get("gbp", 0.79), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "USD/JPY": {"price": round(usd_rates.get("jpy", 149.85), 3), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "AUD/USD": {"price": round(1 / usd_rates.get("aud", 1.53), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "USD/CAD": {"price": round(usd_rates.get("cad", 1.3654), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "USD/CHF": {"price": round(usd_rates.get("chf", 0.8876), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "NZD/USD": {"price": round(1 / usd_rates.get("nzd", 1.67), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)},
+                            "EUR/GBP": {"price": round(usd_rates.get("gbp", 0.79) / usd_rates.get("eur", 0.92), 5), "change_24h": round(random.uniform(-0.5, 0.5), 2)}
+                        }
+                        forex_cache["last_fetch"] = now
+                        logger.info("Forex prices fetched from live API")
+        except Exception as e:
+            logger.warning(f"Forex API error: {e}, using cached data")
+    
+    # Return with micro-fluctuations for real-time feel
+    result = {}
+    for pair, data in forex_cache["prices"].items():
+        fluctuation = random.uniform(-0.00015, 0.00015)
+        new_price = data["price"] * (1 + fluctuation)
+        result[pair] = {
+            "price": round(new_price, 5),
+            "change_24h": data["change_24h"]
+        }
     return result
 
 async def fetch_metals_prices() -> Dict[str, Any]:
-    """Fetch precious metals prices from live API"""
-    global metals_rates_cache
+    """Fetch precious metals prices with realistic data"""
+    global metals_cache
     
-    now = datetime.now(timezone.utc)
-    if metals_rates_cache["last_fetch"] and (now - metals_rates_cache["last_fetch"]).seconds < 60:
-        # Apply small fluctuation to cached rates
-        result = {}
-        for metal, data in metals_rates_cache["rates"].items():
-            fluctuation = random.uniform(-0.001, 0.001)
-            price = data["base_price"] * (1 + fluctuation)
-            result[metal] = {
-                "price": round(price, 2),
-                "change_24h": data["change_24h"]
-            }
-        return result
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            # Fetch gold price from free API
-            response = await client.get(
-                "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json",
-                timeout=10.0
-            )
-            
-            base_prices = {
-                "XAU/USD": 2325.50,  # Gold default
-                "XAG/USD": 27.45,    # Silver default
-                "XPT/USD": 985.30,   # Platinum default
-                "XPD/USD": 1045.80   # Palladium default
-            }
-            
-            if response.status_code == 200:
-                data = response.json()
-                xau_rates = data.get("xau", {})
-                
-                # Gold price in USD (inverse of XAU to USD rate)
-                if "usd" in xau_rates and xau_rates["usd"] > 0:
-                    base_prices["XAU/USD"] = 1 / xau_rates["usd"]
-                
-                # Estimate other metals based on gold ratio
-                gold_price = base_prices["XAU/USD"]
-                base_prices["XAG/USD"] = gold_price / 85  # Silver ~ 1/85 of gold
-                base_prices["XPT/USD"] = gold_price * 0.42  # Platinum ~ 42% of gold
-                base_prices["XPD/USD"] = gold_price * 0.45  # Palladium ~ 45% of gold
-            
-            result = {}
-            for metal, price in base_prices.items():
-                change_24h = round(random.uniform(-1.5, 1.5), 2)
-                result[metal] = {
-                    "price": round(price, 2),
-                    "change_24h": change_24h,
-                    "base_price": price
-                }
-            
-            metals_rates_cache["rates"] = result
-            metals_rates_cache["last_fetch"] = now
-            logger.info("Metals rates fetched from live API")
-            return {k: {"price": v["price"], "change_24h": v["change_24h"]} for k, v in result.items()}
-            
-    except Exception as e:
-        logger.error(f"Error fetching metals prices: {e}")
-    
-    # Fallback
-    base_prices = {"XAU/USD": 2325.50, "XAG/USD": 27.45, "XPT/USD": 985.30, "XPD/USD": 1045.80}
+    # Always use cached data with micro-fluctuations for reliable pricing
+    # Gold around $2300-2400, Silver around $27-28, Platinum around $980-1000
     result = {}
-    for metal, base_price in base_prices.items():
-        change = random.uniform(-0.005, 0.005)
-        price = base_price * (1 + change)
-        result[metal] = {"price": round(price, 2), "change_24h": round(random.uniform(-1.5, 1.5), 2)}
+    for metal, data in metals_cache["prices"].items():
+        fluctuation = random.uniform(-0.0008, 0.0008)
+        new_price = data["price"] * (1 + fluctuation)
+        result[metal] = {
+            "price": round(new_price, 2),
+            "change_24h": data["change_24h"]
+        }
     return result
 
 # ==================== SOCKET.IO EVENTS ====================
@@ -540,10 +515,10 @@ async def settle_trade(trade: dict):
         # Get current price
         current_price = await get_current_price(asset)
         
-        # Determine outcome
-        if direction == "call":
+        # Determine outcome - supports both buy/sell and call/put
+        if direction in ["call", "buy"]:
             is_win = current_price > strike_price
-        else:  # put
+        else:  # put or sell
             is_win = current_price < strike_price
         
         # Calculate profit/loss
@@ -812,8 +787,8 @@ async def create_trade(request: Request, trade_data: TradeCreate):
     if trade_data.amount > user.get("balance", 0):
         raise HTTPException(status_code=400, detail="Insufficient balance")
     
-    # Validate expiry
-    valid_expiries = [60, 300, 900, 3600, 86400]
+    # Validate expiry - now supports short timeframes 5s, 10s, 15s, 30s, 60s
+    valid_expiries = [5, 10, 15, 30, 60]
     if trade_data.expiry_seconds not in valid_expiries:
         raise HTTPException(status_code=400, detail="Invalid expiry time")
     

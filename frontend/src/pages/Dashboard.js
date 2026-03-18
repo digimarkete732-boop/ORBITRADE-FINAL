@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Globe, Search, Filter, ArrowUp, ArrowDown, Clock, 
-  TrendingUp, TrendingDown, ChevronRight, Wallet, 
+  Globe, Search, ArrowUp, ArrowDown, Clock, 
+  TrendingUp, TrendingDown, Wallet, 
   MessageCircle, X, Send, Minus, Plus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,10 +15,9 @@ import socketService from '../services/socket';
 const Dashboard = () => {
   const { user, refreshUser } = useAuth();
   const [assets, setAssets] = useState([]);
-  const [prices, setPrices] = useState({});
+  const [prices, setPrices] = useState({ crypto: {}, forex: {}, metals: {} });
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('forex');
-  const [trades, setTrades] = useState([]);
   const [openTrades, setOpenTrades] = useState([]);
   const [tradeHistory, setTradeHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -26,7 +25,7 @@ const Dashboard = () => {
   
   // Trade form state
   const [tradeAmount, setTradeAmount] = useState(100);
-  const [expiryTime, setExpiryTime] = useState(60);
+  const [expiryTime, setExpiryTime] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   
   // Chat state
@@ -36,13 +35,30 @@ const Dashboard = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
 
-  // Expiry options
+  // Live countdown interval
+  const countdownRef = useRef(null);
+  const [, forceUpdate] = useState({});
+
+  // Expiry options - SHORT TIMEFRAMES
   const expiryOptions = [
-    { value: 60, label: '1 Min' },
-    { value: 300, label: '5 Min' },
-    { value: 900, label: '15 Min' },
-    { value: 3600, label: '1 Hour' }
+    { value: 5, label: '5s' },
+    { value: 10, label: '10s' },
+    { value: 15, label: '15s' },
+    { value: 30, label: '30s' },
+    { value: 60, label: '60s' }
   ];
+
+  // Crypto symbol mapping
+  const cryptoMap = {
+    'BTC/USD': 'bitcoin',
+    'ETH/USD': 'ethereum',
+    'XRP/USD': 'ripple',
+    'LTC/USD': 'litecoin',
+    'SOL/USD': 'solana',
+    'DOGE/USD': 'dogecoin',
+    'ADA/USD': 'cardano',
+    'DOT/USD': 'polkadot'
+  };
 
   // Fetch assets and prices
   useEffect(() => {
@@ -55,12 +71,11 @@ const Dashboard = () => {
         ]);
         
         setAssets(assetsRes.data);
-        setPrices(pricesRes.data);
-        setTrades(tradesRes.data);
+        setPrices(pricesRes.data || { crypto: {}, forex: {}, metals: {} });
         
         // Set default selected asset
         const forexAssets = assetsRes.data.filter(a => a.asset_type === 'forex');
-        if (forexAssets.length > 0) {
+        if (forexAssets.length > 0 && !selectedAsset) {
           setSelectedAsset(forexAssets[0]);
         }
         
@@ -82,30 +97,36 @@ const Dashboard = () => {
     socketService.connect();
     
     socketService.on('price_update', (data) => {
-      setPrices(data);
+      if (data) setPrices(data);
     });
     
     socketService.on('trade_settled', (data) => {
-      toast.success(`Trade ${data.status}: ${data.profit >= 0 ? '+' : ''}$${data.profit.toFixed(2)}`);
+      const profitText = data.profit >= 0 ? `+$${data.profit.toFixed(2)}` : `-$${Math.abs(data.profit).toFixed(2)}`;
+      toast.success(`Trade ${data.status.toUpperCase()}: ${profitText}`);
       refreshUser();
       fetchTrades();
     });
 
-    // Refresh trades periodically
+    // Refresh trades every 2 seconds
     const interval = setInterval(() => {
       fetchTrades();
-    }, 5000);
+    }, 2000);
+
+    // Live countdown update every 100ms for smooth animation
+    countdownRef.current = setInterval(() => {
+      forceUpdate({});
+    }, 100);
 
     return () => {
       socketService.disconnect();
       clearInterval(interval);
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, []);
 
   const fetchTrades = async () => {
     try {
       const res = await api.get('/api/trades?limit=50');
-      setTrades(res.data);
       setOpenTrades(res.data.filter(t => t.status === 'open'));
       setTradeHistory(res.data.filter(t => t.status !== 'open'));
     } catch (error) {
@@ -114,62 +135,44 @@ const Dashboard = () => {
   };
 
   // Get current price for selected asset
-  const getCurrentPrice = useCallback(() => {
-    if (!selectedAsset || !prices) return 0;
+  const getCurrentPrice = useCallback((assetSymbol = null, assetType = null) => {
+    const symbol = assetSymbol || selectedAsset?.symbol;
+    const type = assetType || selectedAsset?.asset_type;
     
-    const { symbol, asset_type } = selectedAsset;
+    if (!symbol || !prices) return 0;
     
-    if (asset_type === 'crypto') {
-      const cryptoMap = {
-        'BTC/USD': 'bitcoin',
-        'ETH/USD': 'ethereum',
-        'XRP/USD': 'ripple',
-        'LTC/USD': 'litecoin',
-        'SOL/USD': 'solana',
-        'DOGE/USD': 'dogecoin',
-        'ADA/USD': 'cardano',
-        'DOT/USD': 'polkadot'
-      };
+    if (type === 'crypto') {
       const cryptoId = cryptoMap[symbol];
       return prices.crypto?.[cryptoId]?.usd || 0;
     }
     
-    if (asset_type === 'forex') {
+    if (type === 'forex') {
       return prices.forex?.[symbol]?.price || 0;
     }
     
-    if (asset_type === 'metals') {
+    if (type === 'metals') {
       return prices.metals?.[symbol]?.price || 0;
     }
     
     return 0;
   }, [selectedAsset, prices]);
 
-  const getChange24h = useCallback(() => {
-    if (!selectedAsset || !prices) return 0;
+  const getChange24h = useCallback((assetSymbol = null, assetType = null) => {
+    const symbol = assetSymbol || selectedAsset?.symbol;
+    const type = assetType || selectedAsset?.asset_type;
     
-    const { symbol, asset_type } = selectedAsset;
+    if (!symbol || !prices) return 0;
     
-    if (asset_type === 'crypto') {
-      const cryptoMap = {
-        'BTC/USD': 'bitcoin',
-        'ETH/USD': 'ethereum',
-        'XRP/USD': 'ripple',
-        'LTC/USD': 'litecoin',
-        'SOL/USD': 'solana',
-        'DOGE/USD': 'dogecoin',
-        'ADA/USD': 'cardano',
-        'DOT/USD': 'polkadot'
-      };
+    if (type === 'crypto') {
       const cryptoId = cryptoMap[symbol];
       return prices.crypto?.[cryptoId]?.usd_24h_change || 0;
     }
     
-    if (asset_type === 'forex') {
+    if (type === 'forex') {
       return prices.forex?.[symbol]?.change_24h || 0;
     }
     
-    if (asset_type === 'metals') {
+    if (type === 'metals') {
       return prices.metals?.[symbol]?.change_24h || 0;
     }
     
@@ -196,14 +199,14 @@ const Dashboard = () => {
     setSubmitting(true);
     
     try {
-      const response = await api.post('/api/trades', {
+      await api.post('/api/trades', {
         asset: selectedAsset.symbol,
         direction,
         amount: tradeAmount,
         expiry_seconds: expiryTime
       });
       
-      toast.success(`${direction.toUpperCase()} trade placed on ${selectedAsset.symbol}`);
+      toast.success(`${direction.toUpperCase()} order placed on ${selectedAsset.symbol}`);
       await refreshUser();
       await fetchTrades();
       
@@ -244,13 +247,28 @@ const Dashboard = () => {
 
   // Format price display
   const formatPrice = (price, assetType) => {
-    if (assetType === 'forex') {
-      return price.toFixed(5);
-    }
-    if (assetType === 'metals') {
-      return price.toFixed(2);
-    }
+    if (!price || price === 0) return '-.--';
+    if (assetType === 'forex') return price.toFixed(5);
+    if (assetType === 'metals') return price.toFixed(2);
     return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Calculate time left for trade
+  const getTimeLeft = (expiryTime) => {
+    const now = new Date();
+    const expiry = new Date(expiryTime);
+    const diff = Math.max(0, expiry - now);
+    return diff;
+  };
+
+  const formatTimeLeft = (ms) => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    if (mins > 0) {
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${secs}s`;
   };
 
   // Calculate potential payout
@@ -269,18 +287,15 @@ const Dashboard = () => {
       <Navbar />
       
       <main className="flex-grow p-2 md:p-4 max-w-[1600px] mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full">
           
           {/* Left Panel: Assets */}
-          <div className="lg:col-span-3 glass-panel rounded-xl flex flex-col h-[500px] lg:h-[600px] overflow-hidden">
+          <div className="lg:col-span-3 glass-panel rounded-xl flex flex-col h-[450px] lg:h-[550px] overflow-hidden">
             <div className="p-3 border-b border-white/5 flex justify-between items-center bg-space/50">
               <h2 className="text-sm font-medium text-white flex items-center gap-2">
                 <Globe className="w-4 h-4" /> Markets
               </h2>
-              <div className="flex gap-2 text-gray-400">
-                <Search className="w-4 h-4 hover:text-white cursor-pointer" />
-                <Filter className="w-4 h-4 hover:text-white cursor-pointer" />
-              </div>
+              <Search className="w-4 h-4 text-gray-400 hover:text-white cursor-pointer" />
             </div>
             
             {/* Category Tabs */}
@@ -288,12 +303,18 @@ const Dashboard = () => {
               {['forex', 'crypto', 'metals'].map(cat => (
                 <button 
                   key={cat}
-                  className={`px-3 py-1 rounded capitalize ${
+                  className={`flex-1 px-2 py-1.5 rounded capitalize transition-all ${
                     selectedCategory === cat 
-                      ? 'bg-white/10 text-white' 
+                      ? 'bg-electric/20 text-electric border border-electric/30' 
                       : 'hover:bg-white/5 text-gray-400'
                   }`}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    const categoryAssets = assets.filter(a => a.asset_type === cat);
+                    if (categoryAssets.length > 0) {
+                      setSelectedAsset(categoryAssets[0]);
+                    }
+                  }}
                   data-testid={`category-${cat}`}
                 >
                   {cat}
@@ -304,63 +325,42 @@ const Dashboard = () => {
             {/* Asset List */}
             <div className="overflow-y-auto flex-grow p-2 space-y-1 custom-scrollbar">
               {filteredAssets.map(asset => {
-                const price = (() => {
-                  if (asset.asset_type === 'crypto') {
-                    const cryptoMap = {
-                      'BTC/USD': 'bitcoin', 'ETH/USD': 'ethereum', 'XRP/USD': 'ripple',
-                      'LTC/USD': 'litecoin', 'SOL/USD': 'solana', 'DOGE/USD': 'dogecoin',
-                      'ADA/USD': 'cardano', 'DOT/USD': 'polkadot'
-                    };
-                    return prices.crypto?.[cryptoMap[asset.symbol]]?.usd || 0;
-                  }
-                  if (asset.asset_type === 'forex') return prices.forex?.[asset.symbol]?.price || 0;
-                  if (asset.asset_type === 'metals') return prices.metals?.[asset.symbol]?.price || 0;
-                  return 0;
-                })();
-                
-                const change = (() => {
-                  if (asset.asset_type === 'crypto') {
-                    const cryptoMap = {
-                      'BTC/USD': 'bitcoin', 'ETH/USD': 'ethereum', 'XRP/USD': 'ripple',
-                      'LTC/USD': 'litecoin', 'SOL/USD': 'solana', 'DOGE/USD': 'dogecoin',
-                      'ADA/USD': 'cardano', 'DOT/USD': 'polkadot'
-                    };
-                    return prices.crypto?.[cryptoMap[asset.symbol]]?.usd_24h_change || 0;
-                  }
-                  if (asset.asset_type === 'forex') return prices.forex?.[asset.symbol]?.change_24h || 0;
-                  if (asset.asset_type === 'metals') return prices.metals?.[asset.symbol]?.change_24h || 0;
-                  return 0;
-                })();
-                
+                const price = getCurrentPrice(asset.symbol, asset.asset_type);
+                const change = getChange24h(asset.symbol, asset.asset_type);
                 const isPositive = change >= 0;
                 const isSelected = selectedAsset?.symbol === asset.symbol;
                 
                 return (
                   <div 
                     key={asset.id}
-                    className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group transition-colors border border-transparent
-                      ${isSelected ? 'bg-white/10 border-white/10' : 'hover:bg-white/5 hover:border-white/5'}`}
+                    className={`p-2.5 rounded-lg cursor-pointer flex justify-between items-center group transition-all border ${
+                      isSelected 
+                        ? 'bg-electric/10 border-electric/30' 
+                        : 'border-transparent hover:bg-white/5 hover:border-white/10'
+                    }`}
                     onClick={() => setSelectedAsset(asset)}
                     data-testid={`asset-${asset.symbol}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-space-light flex items-center justify-center border border-white/10">
-                        {asset.asset_type === 'crypto' && <span className="text-amber text-xs">₿</span>}
-                        {asset.asset_type === 'forex' && <span className="text-electric text-xs">$</span>}
-                        {asset.asset_type === 'metals' && <span className="text-amber text-xs">Au</span>}
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${
+                        isSelected ? 'bg-electric/20 border-electric/40' : 'bg-space-light border-white/10'
+                      }`}>
+                        {asset.asset_type === 'crypto' && <span className="text-amber text-sm font-bold">₿</span>}
+                        {asset.asset_type === 'forex' && <span className="text-electric text-sm font-bold">$</span>}
+                        {asset.asset_type === 'metals' && <span className="text-amber text-sm font-bold">Au</span>}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-white group-hover:text-electric transition-colors">
+                        <div className={`text-sm font-medium ${isSelected ? 'text-electric' : 'text-white group-hover:text-electric'} transition-colors`}>
                           {asset.symbol}
                         </div>
-                        <div className="text-xs text-gray-500">Payout {Math.round(asset.payout_rate * 100)}%</div>
+                        <div className="text-xs text-gray-500">{Math.round(asset.payout_rate * 100)}% payout</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-mono text-sm ${isPositive ? 'text-neon' : 'text-vibrant'}`}>
+                      <div className={`font-mono text-sm ${price > 0 ? (isPositive ? 'text-neon' : 'text-vibrant') : 'text-gray-500'}`}>
                         {formatPrice(price, asset.asset_type)}
                       </div>
-                      <div className={`text-xs flex items-center justify-end gap-1 ${isPositive ? 'text-neon' : 'text-vibrant'}`}>
+                      <div className={`text-xs flex items-center justify-end gap-0.5 ${isPositive ? 'text-neon' : 'text-vibrant'}`}>
                         {isPositive ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
                         {Math.abs(change).toFixed(2)}%
                       </div>
@@ -368,11 +368,14 @@ const Dashboard = () => {
                   </div>
                 );
               })}
+              {filteredAssets.length === 0 && (
+                <div className="text-center text-gray-500 py-8">No assets available</div>
+              )}
             </div>
           </div>
 
           {/* Center Panel: Chart */}
-          <div className="lg:col-span-6 glass-panel rounded-xl flex flex-col relative overflow-hidden h-[400px] lg:h-[600px]">
+          <div className="lg:col-span-6 glass-panel rounded-xl flex flex-col relative overflow-hidden h-[350px] lg:h-[550px]">
             {/* Chart Header */}
             <div className="p-3 border-b border-white/5 flex justify-between items-center bg-space/50 z-10">
               <div className="flex items-center gap-4">
@@ -401,21 +404,21 @@ const Dashboard = () => {
           </div>
 
           {/* Right Panel: Trade Execution */}
-          <div className="lg:col-span-3 glass-panel rounded-xl flex flex-col h-[500px] lg:h-[600px] overflow-hidden border-t-2 border-t-electric">
+          <div className="lg:col-span-3 glass-panel rounded-xl flex flex-col h-[450px] lg:h-[550px] overflow-hidden border-t-2 border-t-electric">
             <div className="p-4 border-b border-white/5 bg-space/50 flex-shrink-0">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-sm font-medium text-white">Execution</span>
-                <span className="text-xs text-vibrant bg-vibrant/10 px-2 py-0.5 rounded border border-vibrant/20">
+                <span className="text-sm font-medium text-white">Quick Trade</span>
+                <span className="text-xs text-neon bg-neon/10 px-2 py-0.5 rounded border border-neon/20">
                   {Math.round((selectedAsset?.payout_rate || 0.85) * 100)}% Return
                 </span>
               </div>
               
               {/* Amount Input */}
-              <div className="mb-4">
+              <div className="mb-3">
                 <label className="text-xs text-gray-400 mb-1 block">Amount ($)</label>
                 <div className="bg-space-light border border-white/10 rounded-lg p-2 flex justify-between items-center">
                   <button 
-                    className="text-gray-400 hover:text-white px-2"
+                    className="text-gray-400 hover:text-white px-2 py-1 hover:bg-white/10 rounded"
                     onClick={() => setTradeAmount(Math.max(1, tradeAmount - 10))}
                   >
                     <Minus className="w-4 h-4" />
@@ -424,11 +427,11 @@ const Dashboard = () => {
                     type="number" 
                     value={tradeAmount}
                     onChange={(e) => setTradeAmount(Math.max(1, parseFloat(e.target.value) || 0))}
-                    className="bg-transparent text-center font-mono text-white text-lg w-24 focus:outline-none"
+                    className="bg-transparent text-center font-mono text-white text-lg w-20 focus:outline-none"
                     data-testid="trade-amount"
                   />
                   <button 
-                    className="text-gray-400 hover:text-white px-2"
+                    className="text-gray-400 hover:text-white px-2 py-1 hover:bg-white/10 rounded"
                     onClick={() => setTradeAmount(tradeAmount + 10)}
                   >
                     <Plus className="w-4 h-4" />
@@ -436,26 +439,27 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Slider */}
-              <div className="mb-6 px-1">
-                <input 
-                  type="range" 
-                  min="1" 
-                  max={Math.min(1000, user?.balance || 1000)}
-                  value={tradeAmount}
-                  onChange={(e) => setTradeAmount(parseInt(e.target.value))}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>$1</span>
-                  <span>${Math.min(1000, user?.balance || 1000)}</span>
-                </div>
+              {/* Quick Amount Buttons */}
+              <div className="grid grid-cols-4 gap-1 mb-4">
+                {[25, 50, 100, 500].map(amt => (
+                  <button
+                    key={amt}
+                    className={`py-1.5 rounded text-xs font-medium transition-all ${
+                      tradeAmount === amt
+                        ? 'bg-electric/20 text-electric border border-electric/30'
+                        : 'bg-space-light border border-white/10 text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setTradeAmount(amt)}
+                  >
+                    ${amt}
+                  </button>
+                ))}
               </div>
 
               {/* Expiry Time */}
-              <div className="mb-6">
-                <label className="text-xs text-gray-400 mb-1 block">Expiry Time</label>
-                <div className="grid grid-cols-4 gap-2">
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 mb-1 block">Duration</label>
+                <div className="grid grid-cols-5 gap-1">
                   {expiryOptions.map(opt => (
                     <button
                       key={opt.value}
@@ -474,38 +478,40 @@ const Dashboard = () => {
               </div>
 
               {/* Expected Payout */}
-              <div className="flex justify-between items-center mb-6 p-3 rounded-lg bg-electric/5 border border-electric/10">
-                <span className="text-xs text-gray-400">Potential Payout</span>
-                <span className="font-mono text-lg text-white font-medium" data-testid="potential-payout">
-                  ${potentialPayout.toFixed(2)}
+              <div className="flex justify-between items-center mb-4 p-3 rounded-lg bg-neon/5 border border-neon/10">
+                <span className="text-xs text-gray-400">Potential Profit</span>
+                <span className="font-mono text-lg text-neon font-medium" data-testid="potential-payout">
+                  +${(potentialPayout - tradeAmount).toFixed(2)}
                 </span>
               </div>
 
-              {/* Call/Put Buttons */}
+              {/* BUY/SELL Buttons */}
               <div className="grid grid-cols-2 gap-3">
                 <button 
-                  className="relative overflow-hidden group py-4 rounded-xl bg-space-light border border-neon/30 hover:border-neon transition-all hover:shadow-[0_0_20px_rgba(42,245,255,0.2)] disabled:opacity-50"
-                  onClick={() => placeTrade('call')}
+                  className="relative overflow-hidden group py-4 rounded-xl bg-neon/10 border border-neon/30 hover:border-neon transition-all hover:shadow-[0_0_25px_rgba(42,245,255,0.3)] disabled:opacity-50"
+                  onClick={() => placeTrade('buy')}
                   disabled={submitting || !selectedAsset}
-                  data-testid="call-btn"
+                  data-testid="buy-btn"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-neon/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-neon/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="flex flex-col items-center gap-1 relative z-10">
-                    <ArrowUp className="w-5 h-5 text-neon" />
-                    <span className="font-display font-bold text-neon tracking-wider">CALL</span>
+                    <ArrowUp className="w-6 h-6 text-neon" />
+                    <span className="font-display font-bold text-neon tracking-wider text-lg">BUY</span>
+                    <span className="text-[10px] text-neon/70">Higher</span>
                   </div>
                 </button>
                 
                 <button 
-                  className="relative overflow-hidden group py-4 rounded-xl bg-space-light border border-vibrant/30 hover:border-vibrant transition-all hover:shadow-[0_0_20px_rgba(157,78,221,0.2)] disabled:opacity-50"
-                  onClick={() => placeTrade('put')}
+                  className="relative overflow-hidden group py-4 rounded-xl bg-vibrant/10 border border-vibrant/30 hover:border-vibrant transition-all hover:shadow-[0_0_25px_rgba(157,78,221,0.3)] disabled:opacity-50"
+                  onClick={() => placeTrade('sell')}
                   disabled={submitting || !selectedAsset}
-                  data-testid="put-btn"
+                  data-testid="sell-btn"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-vibrant/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-vibrant/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="flex flex-col items-center gap-1 relative z-10">
-                    <ArrowDown className="w-5 h-5 text-vibrant" />
-                    <span className="font-display font-bold text-vibrant tracking-wider">PUT</span>
+                    <ArrowDown className="w-6 h-6 text-vibrant" />
+                    <span className="font-display font-bold text-vibrant tracking-wider text-lg">SELL</span>
+                    <span className="text-[10px] text-vibrant/70">Lower</span>
                   </div>
                 </button>
               </div>
@@ -518,26 +524,26 @@ const Dashboard = () => {
                 <span className="text-white font-mono">${(user?.balance || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Open Positions</span>
-                <span className="text-electric">{openTrades.length}</span>
+                <span className="text-gray-500">Active Trades</span>
+                <span className="text-electric font-mono">{openTrades.length}</span>
               </div>
             </div>
           </div>
 
           {/* Bottom Panel: Open Positions & History */}
-          <div className="lg:col-span-12 glass-panel rounded-xl overflow-hidden mt-2">
+          <div className="lg:col-span-12 glass-panel rounded-xl overflow-hidden">
             <div className="flex border-b border-white/5 bg-space/50 px-4 pt-3">
               <button 
-                className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-all ${
                   !showHistory ? 'text-neon border-neon' : 'text-gray-400 border-transparent hover:text-white'
                 }`}
                 onClick={() => setShowHistory(false)}
                 data-testid="open-trades-tab"
               >
-                Open Trades ({openTrades.length})
+                Active Trades ({openTrades.length})
               </button>
               <button 
-                className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-all ${
                   showHistory ? 'text-neon border-neon' : 'text-gray-400 border-transparent hover:text-white'
                 }`}
                 onClick={() => setShowHistory(true)}
@@ -556,47 +562,79 @@ const Dashboard = () => {
                     <th className="p-3 font-normal">Strike Price</th>
                     <th className="p-3 font-normal">Current Price</th>
                     <th className="p-3 font-normal">Amount</th>
-                    <th className="p-3 font-normal">{showHistory ? 'Result' : 'Time Left'}</th>
+                    <th className="p-3 font-normal">{showHistory ? 'Profit/Loss' : 'Time Left'}</th>
                     <th className="p-3 font-normal text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm">
                   {(showHistory ? tradeHistory : openTrades).slice(0, 10).map(trade => {
-                    const timeLeft = trade.status === 'open' 
-                      ? Math.max(0, Math.floor((new Date(trade.expiry_time) - new Date()) / 1000))
-                      : 0;
-                    
-                    const formatTime = (seconds) => {
-                      const mins = Math.floor(seconds / 60);
-                      const secs = seconds % 60;
-                      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    };
+                    const timeLeftMs = getTimeLeft(trade.expiry_time);
+                    const currentPrice = getCurrentPrice(trade.asset, trade.asset_type);
+                    const isWinning = trade.direction === 'buy' || trade.direction === 'call' 
+                      ? currentPrice > trade.strike_price 
+                      : currentPrice < trade.strike_price;
                     
                     return (
                       <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="p-3 flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${trade.direction === 'call' ? 'bg-neon' : 'bg-vibrant'}`}></div>
-                          {trade.asset}
+                          <div className={`w-2 h-2 rounded-full ${
+                            trade.direction === 'buy' || trade.direction === 'call' ? 'bg-neon' : 'bg-vibrant'
+                          }`}></div>
+                          <span className="font-medium">{trade.asset}</span>
                         </td>
-                        <td className={`p-3 ${trade.direction === 'call' ? 'text-neon' : 'text-vibrant'}`}>
-                          {trade.direction.toUpperCase()}
-                        </td>
-                        <td className="p-3 font-mono">{trade.strike_price?.toFixed(2)}</td>
-                        <td className="p-3 font-mono">{trade.close_price?.toFixed(2) || '-'}</td>
-                        <td className="p-3 font-mono">${trade.amount.toFixed(2)}</td>
-                        <td className="p-3 font-mono text-gray-400">
-                          {showHistory 
-                            ? (trade.profit >= 0 ? '+' : '') + '$' + trade.profit?.toFixed(2)
-                            : formatTime(timeLeft)
-                          }
-                        </td>
-                        <td className={`p-3 text-right ${
-                          trade.status === 'open' ? 'text-amber' :
-                          trade.status === 'won' ? 'text-neon' : 'text-vibrant'
+                        <td className={`p-3 font-medium ${
+                          trade.direction === 'buy' || trade.direction === 'call' ? 'text-neon' : 'text-vibrant'
                         }`}>
-                          {trade.status === 'won' && `+$${(trade.amount * trade.payout_rate).toFixed(2)}`}
-                          {trade.status === 'lost' && `-$${trade.amount.toFixed(2)}`}
-                          {trade.status === 'open' && 'Active'}
+                          {trade.direction === 'call' ? 'BUY' : trade.direction === 'put' ? 'SELL' : trade.direction.toUpperCase()}
+                        </td>
+                        <td className="p-3 font-mono text-gray-300">{formatPrice(trade.strike_price, trade.asset_type)}</td>
+                        <td className={`p-3 font-mono ${
+                          trade.status === 'open' 
+                            ? (isWinning ? 'text-neon' : 'text-vibrant') 
+                            : 'text-gray-400'
+                        }`}>
+                          {trade.status === 'open' ? formatPrice(currentPrice, trade.asset_type) : formatPrice(trade.close_price, trade.asset_type)}
+                        </td>
+                        <td className="p-3 font-mono text-white">${trade.amount.toFixed(2)}</td>
+                        <td className="p-3">
+                          {showHistory ? (
+                            <span className={`font-mono ${trade.profit >= 0 ? 'text-neon' : 'text-vibrant'}`}>
+                              {trade.profit >= 0 ? '+' : ''}${trade.profit?.toFixed(2)}
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Clock className={`w-3 h-3 ${timeLeftMs > 10000 ? 'text-amber' : 'text-vibrant animate-pulse'}`} />
+                              <span className={`font-mono ${timeLeftMs > 10000 ? 'text-amber' : 'text-vibrant'}`}>
+                                {formatTimeLeft(timeLeftMs)}
+                              </span>
+                              {/* Progress Bar */}
+                              <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all ${timeLeftMs > 10000 ? 'bg-amber' : 'bg-vibrant'}`}
+                                  style={{ width: `${Math.min(100, (timeLeftMs / (trade.expiry_seconds * 1000)) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {trade.status === 'open' ? (
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              isWinning 
+                                ? 'bg-neon/20 text-neon border border-neon/30' 
+                                : 'bg-vibrant/20 text-vibrant border border-vibrant/30'
+                            }`}>
+                              {isWinning ? 'WINNING' : 'LOSING'}
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              trade.status === 'won' 
+                                ? 'bg-neon/20 text-neon border border-neon/30' 
+                                : 'bg-vibrant/20 text-vibrant border border-vibrant/30'
+                            }`}>
+                              {trade.status === 'won' ? `+$${(trade.amount * trade.payout_rate).toFixed(2)}` : `-$${trade.amount.toFixed(2)}`}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -604,7 +642,7 @@ const Dashboard = () => {
                   {(showHistory ? tradeHistory : openTrades).length === 0 && (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-gray-500">
-                        {showHistory ? 'No trade history yet' : 'No open trades'}
+                        {showHistory ? 'No trade history yet' : 'No active trades - Place your first trade!'}
                       </td>
                     </tr>
                   )}
