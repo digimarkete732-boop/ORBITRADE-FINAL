@@ -2,73 +2,89 @@
 
 ## Executive Summary
 **Project Name:** ORBITAL - Next-Generation Binary Options Trading Platform
-**Version:** 2.1 (P&L Tracker + Countdown Fix)
-**Last Updated:** March 18, 2026
+**Version:** 3.0 (Full Feature Set)
+**Last Updated:** April 4, 2026
 
 ## Original Problem Statement
-Build a comprehensive binary options trading platform supporting Forex, Cryptocurrencies, and Precious Metals with full trading functionality, AI-powered predictions, and professional-grade charts.
+Build a comprehensive binary options trading platform supporting Forex, Cryptocurrencies, and Precious Metals with full trading functionality, AI-powered predictions, professional charts, user management, KYC, and admin controls.
 
-## Latest Updates (v2.1) - P&L Tracker + Countdown
+## What's Been Built
 
-### New in v2.1:
-1. **Live P&L Tracker** - Daily/Weekly/Monthly profit tracking with clickable period toggle
-2. **Win Rate Display** - Real-time win rate with W/L count
-3. **Improved Live Countdown** - Decimal precision (e.g., 4.7s), 50ms updates, color-coded urgency (amber > orange > red with pulse)
-4. **P&L Backend Endpoint** - GET /api/user/pnl returns aggregated trade performance data
+### v3.0 — Profile, KYC, Admin Overhaul, Crypto Payments (April 4, 2026)
+- **Profile Page** — Full user profile with edit, account details, KYC section
+- **KYC Document Upload** — Upload ID front/back, selfie, proof of address
+- **Crypto-Only Deposit** — QR codes for BTC, ETH, USDT, LTC, SOL (bank removed)
+- **Crypto-Only Withdraw** — Wallet address input, demo mode blocked
+- **Admin Panel Overhaul** — 5 tabs: Overview, Users, Withdrawals, Broadcast, Promotions
+- **Admin: User Management** — Search, suspend/activate, adjust balance, approve/reject KYC
+- **Admin: Broadcast** — Send notifications to all users
+- **Admin: Promotions** — Create/manage deposit bonus promotions
+- **Mobile Responsive** — All pages fully responsive with hamburger menu
 
-### From v2.0:
-1. AI-Powered BUY/SELL Predictions (GPT-5.2)
-2. Live Metal Prices (fawazahmed0 currency API)
-3. Interactive Chart Timeframes (1s, 5s, 1m, 5m, 15m, 1H)
-4. Technical Indicators (SMA 20, EMA 9, Bollinger Bands)
-5. Dashboard Redesign (dark, professional, scrolling ticker)
+### v2.1 — P&L Tracker + Countdown (March 18, 2026)
+- Live P&L tracker (daily/weekly/monthly) with period toggle
+- Win rate display with W/L count
+- Improved countdown timer (50ms updates, decimal precision, color urgency)
+
+### v2.0 — AI Dashboard Overhaul (March 18, 2026)
+- AI-powered BUY/SELL predictions (GPT-5.2 via Emergent LLM)
+- Live metal prices (fawazahmed0 currency API)
+- Interactive chart timeframes (1s, 5s, 1m, 5m, 15m, 1H)
+- Technical indicators (SMA 20, EMA 9, Bollinger Bands)
+- Dashboard redesign with scrolling price ticker
+- Demo/Real account system with toggle
+- Account setup page after registration
+
+### v1.0 — MVP (March 18, 2026)
+- Full auth system (JWT, slide-to-verify)
+- Trading engine (BUY/SELL, 5-60s expiry)
+- TradingView Lightweight Charts
+- Forex/Crypto/Metals asset categories
+- WebSocket real-time updates
+- Admin panel basics
 
 ## Default Accounts
-| Account Type | Email | Password |
-|--------------|-------|----------|
-| Admin | admin@orbitrade.live | password |
-| Master User | masteruser@orbitrade.live | password |
+| Account | Email | Password | Role |
+|---------|-------|----------|------|
+| Admin | admin@orbitrade.live | password | Admin |
+| Master User | masteruser@orbitrade.live | password | User |
 
-## Technical Details
+## API Endpoints
+### Auth
+- POST `/api/auth/register`, POST `/api/auth/login`, GET `/api/auth/me`
 
-### P&L Tracker
-- Endpoint: GET /api/user/pnl
-- Returns: daily, weekly, monthly aggregates
-- Fields: profit, wins, losses, total trades, win_rate
-- Auto-refreshes every 10 seconds + after each trade settlement
-- Clickable to toggle between Daily/Weekly/Monthly view
+### User
+- GET `/api/user/profile`, PATCH `/api/user/profile`
+- POST `/api/user/kyc/upload`, GET `/api/user/kyc/status`
+- GET `/api/user/pnl`, GET `/api/user/notifications`
+- POST `/api/user/setup-account`, POST `/api/user/switch-account`
 
-### Countdown Timer
-- 50ms update interval for smooth countdown
-- Decimal precision for sub-10s trades (e.g., "4.7s")
-- Color coding: amber (>10s) → orange (3-10s) → red pulsing (<3s)
-- Progress bar with smooth transition
+### Trading
+- GET `/api/assets`, GET `/api/prices`
+- POST `/api/trades`, GET `/api/trades`
+- POST `/api/predict`, POST `/api/chat`
 
-### API Endpoints
-- POST `/api/auth/register` - User registration
-- POST `/api/auth/login` - Login
-- GET `/api/user/me` - Current user
-- GET `/api/user/pnl` - Daily/Weekly/Monthly P&L (NEW)
-- GET `/api/assets` - All tradeable assets
-- GET `/api/prices` - Live prices (forex, crypto, metals)
-- POST `/api/trades` - Place trade
-- GET `/api/trades` - Trade history
-- POST `/api/predict` - AI prediction
-- POST `/api/chat` - AI chat
+### Financial
+- POST `/api/withdrawals`, GET `/api/withdrawals`
 
-## Testing Results (v2.1)
-- Backend: **100%** (14/14 tests passed in v2.0 + P&L endpoint verified)
-- Frontend: **100%** (18/18 features + P&L tracker + countdown verified)
+### Admin
+- GET `/api/admin/stats`, GET/PUT `/api/admin/users`, GET/PUT `/api/admin/withdrawals`
+- POST `/api/admin/broadcast`, GET/POST `/api/admin/promotions`
+- POST `/api/admin/users/{id}/adjust-balance`, POST `/api/admin/users/{id}/kyc-action`
+
+## Testing Status
+- Backend: 100% (18/18 latest)
+- Frontend: 100% (23/23 latest)
+- 6 test iterations completed
+
+## Mocked/Placeholder
+- Crypto wallet addresses (sample addresses, no blockchain integration)
+- Payment processing (deposits/withdrawals are tracked but not processed)
+- Metal prices use fawazahmed0 API (may differ from TradingView)
+- CoinGecko crypto API rate-limited with fallback caching
 
 ## Upcoming Tasks
-- P0: KYC Document Upload System
 - P1: Email Notifications (SendGrid)
 - P1: Touch/No Touch option types
-- P2: PayPal payment integration
-- P2: Backend refactoring (split server.py monolith)
-
-## Known Limitations
-- Metal prices from fawazahmed0 API may differ from TradingView (different data sources)
-- CoinGecko crypto API rate-limited; falls back to cached data
-- Payment gateways are placeholders
-- True MT5 feed requires broker VPS connection (not possible without VPS)
+- P2: Real payment gateway integration
+- P2: Backend refactoring (split server.py)
