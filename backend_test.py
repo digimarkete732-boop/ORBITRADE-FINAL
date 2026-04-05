@@ -18,7 +18,7 @@ import time
 from datetime import datetime
 
 class OrbitalAPITester:
-    def __init__(self, base_url="https://orbital-trading-1.preview.emergentagent.com"):
+    def __init__(self, base_url="https://trade-orbit.preview.emergentagent.com"):
         self.base_url = base_url
         self.session = requests.Session()
         self.user_token = None
