@@ -1,310 +1,440 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import Marquee from 'react-fast-marquee';
 import { 
-  ArrowRight, 
-  TrendingUp, 
-  Shield, 
-  Zap, 
-  Globe,
-  ChevronRight,
-  BarChart3,
-  Wallet,
-  Users
+  ArrowRight, TrendingUp, Shield, Zap, Trophy, Users, 
+  Clock, DollarSign, BarChart3, Globe, Star, ChevronRight,
+  Target, Cpu, Lock, Wallet
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 
+// Animated counter component
+const AnimatedCounter = ({ value, suffix = '' }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  const [count, setCount] = React.useState(0);
+  
+  useEffect(() => {
+    if (isInView) {
+      const duration = 2000;
+      const steps = 60;
+      const increment = value / steps;
+      let current = 0;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= value) {
+          setCount(value);
+          clearInterval(timer);
+        } else {
+          setCount(Math.floor(current));
+        }
+      }, duration / steps);
+      return () => clearInterval(timer);
+    }
+  }, [isInView, value]);
+  
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+};
+
+// Feature card with animation
+const FeatureCard = ({ icon: Icon, title, description, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.6, delay }}
+    viewport={{ once: true }}
+    className="feature-card group"
+  >
+    <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 group-hover:bg-brand/20 transition-colors">
+      <Icon className="w-7 h-7 text-brand" />
+    </div>
+    <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+    <p className="text-sm text-gray-400 leading-relaxed">{description}</p>
+  </motion.div>
+);
+
+// Testimonial card
+const TestimonialCard = ({ name, role, content, rating, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    whileInView={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.5, delay }}
+    viewport={{ once: true }}
+    className="bg-panel border border-white/5 rounded-2xl p-6 hover:border-brand/20 transition-all"
+  >
+    <div className="flex gap-1 mb-4">
+      {[...Array(rating)].map((_, i) => (
+        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+      ))}
+    </div>
+    <p className="text-gray-300 text-sm leading-relaxed mb-4">"{content}"</p>
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center text-brand font-bold">
+        {name[0]}
+      </div>
+      <div>
+        <div className="text-sm font-semibold text-white">{name}</div>
+        <div className="text-xs text-gray-500">{role}</div>
+      </div>
+    </div>
+  </motion.div>
+);
+
 const Landing = () => {
-  const stats = [
-    { value: '124,583', label: 'Active Traders' },
-    { value: '$4.2B+', label: 'Quarterly Vol' },
-    { value: '<12ms', label: 'Execution Speed' },
-    { value: '99.99%', label: 'Uptime' }
+  const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+  const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.9]);
+
+  // Sample live prices for marquee
+  const livePrices = [
+    { symbol: 'BTC/USD', price: '67,432.50', change: '+2.4%', up: true },
+    { symbol: 'ETH/USD', price: '3,521.20', change: '+1.8%', up: true },
+    { symbol: 'EUR/USD', price: '1.0875', change: '-0.3%', up: false },
+    { symbol: 'XAU/USD', price: '2,345.60', change: '+0.5%', up: true },
+    { symbol: 'GBP/USD', price: '1.2678', change: '+0.2%', up: true },
+    { symbol: 'SOL/USD', price: '142.35', change: '+5.2%', up: true },
   ];
 
   const features = [
-    {
-      icon: <TrendingUp className="w-6 h-6" />,
-      title: 'Multi-Asset Trading',
-      description: 'Trade Forex, Crypto, and Precious Metals from a single platform with competitive payouts up to 92%.'
-    },
-    {
-      icon: <Zap className="w-6 h-6" />,
-      title: 'Microsecond Execution',
-      description: 'State-of-the-art trading engine ensures your trades are executed in under 12ms.'
-    },
-    {
-      icon: <Shield className="w-6 h-6" />,
-      title: 'Bank-Grade Security',
-      description: 'Enterprise security with 2FA, encrypted transactions, and cold storage for crypto assets.'
-    },
-    {
-      icon: <Globe className="w-6 h-6" />,
-      title: 'Global Markets 24/7',
-      description: 'Access forex markets during trading hours and crypto/metals markets around the clock.'
-    }
+    { icon: BarChart3, title: 'Binary Options Trading', description: 'Trade forex, crypto, and metals with up to 95% returns. Simple Buy/Sell predictions with 5-60 second expiry times.' },
+    { icon: Cpu, title: 'AI-Powered Predictions', description: 'Advanced GPT-5.2 AI analyzes market trends and provides real-time trading signals with confidence scores.' },
+    { icon: Target, title: 'Touch/No Touch Options', description: 'Predict if price will touch a target level. More ways to profit from market movements.' },
+    { icon: Shield, title: 'Secure & Regulated', description: 'Bank-grade encryption, KYC verification, and instant crypto deposits. Your funds are always safe.' },
+    { icon: Trophy, title: 'Trading Tournaments', description: 'Compete weekly for prize pools up to $10,000. Climb the leaderboard and prove your skills.' },
+    { icon: Users, title: 'Affiliate Program', description: 'Earn up to 10% commission on referrals. Multi-tier program with revenue sharing on trading profits.' },
   ];
 
-  const assetTypes = [
-    { name: 'Forex', pairs: '50+ Pairs', icon: '💱', color: 'electric' },
-    { name: 'Crypto', pairs: '30+ Coins', icon: '₿', color: 'neon' },
-    { name: 'Metals', pairs: '4 Assets', icon: '🥇', color: 'amber' }
+  const stats = [
+    { value: 50000, suffix: '+', label: 'Active Traders' },
+    { value: 95, suffix: '%', label: 'Max Payout' },
+    { value: 24, suffix: '/7', label: 'Support' },
+    { value: 150, suffix: '+', label: 'Assets' },
+  ];
+
+  const testimonials = [
+    { name: 'Michael Chen', role: 'Professional Trader', content: 'The AI predictions are incredibly accurate. I\'ve increased my win rate by 40% since joining ORBITAL.', rating: 5 },
+    { name: 'Sarah Johnson', role: 'Crypto Enthusiast', content: 'Finally a platform that combines simplicity with professional tools. The mobile app is flawless.', rating: 5 },
+    { name: 'David Williams', role: 'Day Trader', content: 'Fast execution, great payouts, and the tournament feature keeps me coming back. Highly recommended!', rating: 5 },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-app overflow-x-hidden">
       <Navbar />
       
-      {/* Hero Section */}
-      <section className="flex-grow flex flex-col items-center justify-center px-4 relative perspective-1000 pt-24 pb-16">
-        {/* 3D Background Elements */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden preserve-3d">
-          <motion.div 
-            className="w-[800px] h-[800px] border border-white/5 rounded-full absolute"
-            style={{ transform: 'rotateX(60deg)' }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
-          />
-          <motion.div 
-            className="w-[600px] h-[600px] border border-electric/20 rounded-full absolute shadow-[0_0_50px_rgba(58,134,255,0.1)_inset]"
-            style={{ transform: 'rotateX(60deg)' }}
-            animate={{ rotate: -360 }}
-            transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
-          />
-          
-          {/* Floating Chart */}
-          <motion.div 
-            className="absolute right-[10%] top-[20%] w-48 h-32 glass-panel rounded-lg p-4 flex items-end gap-2 opacity-50 hidden lg:flex"
-            style={{ transform: 'rotateY(-10deg)' }}
-            animate={{ y: [0, -20, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <div className="w-full bg-electric/40 h-[40%] rounded-t-sm"></div>
-            <div className="w-full bg-neon/40 h-[70%] rounded-t-sm"></div>
-            <div className="w-full bg-vibrant/40 h-[30%] rounded-t-sm"></div>
-            <div className="w-full bg-neon/60 h-[90%] rounded-t-sm shadow-[0_0_10px_#2AF5FF]"></div>
-          </motion.div>
-        </div>
+      {/* Price Ticker */}
+      <div className="fixed top-14 left-0 right-0 z-40 bg-panel/80 backdrop-blur-xl border-b border-white/5">
+        <Marquee gradient={false} speed={40} pauseOnHover>
+          <div className="flex items-center gap-8 py-2 px-4">
+            {[...livePrices, ...livePrices].map((p, i) => (
+              <div key={i} className="flex items-center gap-3 text-sm">
+                <span className="font-semibold text-white">{p.symbol}</span>
+                <span className="font-mono text-gray-300">{p.price}</span>
+                <span className={`font-mono text-xs ${p.up ? 'text-buy' : 'text-sell'}`}>{p.change}</span>
+              </div>
+            ))}
+          </div>
+        </Marquee>
+      </div>
 
-        <div className="z-10 text-center max-w-4xl mx-auto">
-          <motion.div 
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mb-8"
-            initial={{ opacity: 0, y: 20 }}
+      {/* Hero Section */}
+      <motion.section 
+        ref={heroRef}
+        style={{ opacity: heroOpacity, scale: heroScale }}
+        className="relative min-h-screen flex items-center justify-center pt-32 pb-20 overflow-hidden"
+      >
+        {/* Background Image & Overlay */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=2000&q=80" 
+            alt="Trading Background"
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-app/50 via-app/80 to-app" />
+          <div className="absolute inset-0 hero-gradient" />
+        </div>
+        
+        {/* Animated Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand/10 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-buy/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ duration: 0.8 }}
           >
-            <span className="w-2 h-2 rounded-full bg-neon animate-pulse"></span>
-            <span className="text-xs font-medium text-gray-300">Platform v3.0 is live</span>
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/10 border border-brand/20 text-brand text-sm font-medium mb-6">
+              <Zap className="w-4 h-4" /> AI-Powered Trading Platform
+            </span>
           </motion.div>
           
           <motion.h1 
-            className="text-5xl md:text-7xl font-display font-semibold tracking-tighter text-white mb-6 leading-tight"
-            initial={{ opacity: 0, y: 20 }}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight"
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
           >
-            Master the markets with <br className="hidden md:block" />
-            <span className="text-gradient">absolute precision.</span>
+            Trade Smarter with<br />
+            <span className="text-gradient-brand">ORBITAL</span>
           </motion.h1>
           
           <motion.p 
-            className="text-lg text-gray-400 mb-10 max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
+            className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Institutional-grade binary options trading. Advanced charting, microsecond execution, 
-            and transparent pricing in a stunning Web3 environment.
+            Binary options trading with AI predictions, real-time market data, 
+            and up to 95% returns. Join 50,000+ traders worldwide.
           </motion.p>
           
           <motion.div 
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
           >
-            <Link to="/auth" className="btn-primary flex items-center gap-2 group" data-testid="start-trading-btn">
-              Start Trading
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link to="/auth?demo=true" className="btn-secondary" data-testid="demo-account-btn">
-              Open Demo Account
-            </Link>
+            <button 
+              onClick={() => navigate(token ? '/dashboard' : '/auth')}
+              className="group px-8 py-4 rounded-xl bg-brand text-white font-bold text-base hover:bg-brand-hover transition-all hover:shadow-[0_0_40px_rgba(0,188,212,0.4)] flex items-center gap-2"
+              data-testid="cta-start-trading"
+            >
+              Start Trading Now
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button 
+              onClick={() => navigate('/auth')}
+              className="px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-base hover:bg-white/10 transition-all flex items-center gap-2"
+              data-testid="cta-demo"
+            >
+              <DollarSign className="w-5 h-5" />
+              $10,000 Demo Account
+            </button>
           </motion.div>
-
-          {/* Stats */}
+          
+          {/* Trust Badges */}
           <motion.div 
-            className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-white/10 pt-10"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            className="flex flex-wrap items-center justify-center gap-6 mt-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
           >
-            {stats.map((stat, index) => (
-              <div key={index}>
-                <div className="font-mono text-2xl text-white font-medium mb-1">{stat.value}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-widest">{stat.label}</div>
-              </div>
-            ))}
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Lock className="w-4 h-4 text-buy" />
+              <span>SSL Encrypted</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Clock className="w-4 h-4 text-brand" />
+              <span>Instant Withdrawals</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Shield className="w-4 h-4 text-amber-400" />
+              <span>KYC Verified</span>
+            </div>
           </motion.div>
         </div>
-      </section>
+        
+        {/* Scroll Indicator */}
+        <motion.div 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2">
+            <div className="w-1 h-2 bg-brand rounded-full" />
+          </div>
+        </motion.div>
+      </motion.section>
 
-      {/* Features Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-display font-semibold text-white mb-4">
-              Why Traders Choose ORBITAL
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Built for professional traders who demand speed, security, and reliability.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div 
-                key={index}
-                className="glass-panel-hover rounded-xl p-6"
+      {/* Stats Section */}
+      <section className="py-20 relative">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {stats.map((stat, idx) => (
+              <motion.div
+                key={idx}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
+                className="text-center p-6 rounded-2xl bg-panel/50 border border-white/5"
               >
-                <div className="w-12 h-12 rounded-lg bg-electric/10 flex items-center justify-center text-electric mb-4">
-                  {feature.icon}
+                <div className="text-3xl sm:text-4xl font-bold text-brand mb-2">
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-400">{feature.description}</p>
+                <div className="text-sm text-gray-500 uppercase tracking-wider">{stat.label}</div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Asset Types Section */}
-      <section className="py-20 px-4 bg-space-light/50">
-        <div className="max-w-6xl mx-auto">
+      {/* Features Section */}
+      <section className="py-24 relative" data-testid="features-section">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-brand mb-4 block">Platform Features</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+              Everything You Need to<br />
+              <span className="text-gradient-brand">Trade Profitably</span>
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              Professional-grade tools, AI insights, and a seamless trading experience designed for both beginners and experts.
+            </p>
+          </motion.div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, idx) => (
+              <FeatureCard key={idx} {...feature} delay={idx * 0.1} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-24 bg-panel/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <motion.div 
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-display font-semibold text-white mb-4">
-              Trade Multiple Asset Classes
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Diversify your portfolio with access to forex, cryptocurrencies, and precious metals.
-            </p>
+            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-brand mb-4 block">Getting Started</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Start Trading in Minutes</h2>
           </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {assetTypes.map((asset, index) => (
-              <motion.div 
-                key={index}
-                className={`glass-panel rounded-xl p-8 text-center border-t-2 border-t-${asset.color}`}
-                initial={{ opacity: 0, y: 20 }}
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Create Account', desc: 'Sign up in 30 seconds. No lengthy verification for demo trading.' },
+              { step: '02', title: 'Fund or Demo', desc: 'Deposit crypto instantly or start with $10,000 demo balance.' },
+              { step: '03', title: 'Start Trading', desc: 'Choose an asset, predict direction, and earn up to 95% returns.' },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.15 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
+                className="relative text-center p-8"
               >
-                <div className="text-5xl mb-4">{asset.icon}</div>
-                <h3 className="text-xl font-display font-semibold text-white mb-2">{asset.name}</h3>
-                <p className="text-gray-400 mb-4">{asset.pairs}</p>
-                <div className={`inline-flex items-center text-sm text-${asset.color} hover:underline cursor-pointer`}>
-                  View Markets <ChevronRight className="w-4 h-4" />
+                <div className="text-6xl font-bold text-brand/10 absolute top-4 left-1/2 -translate-x-1/2">{item.step}</div>
+                <div className="relative z-10 pt-8">
+                  <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                  <p className="text-gray-400 text-sm">{item.desc}</p>
                 </div>
               </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-brand mb-4 block">Testimonials</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">Trusted by Traders Worldwide</h2>
+          </motion.div>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t, idx) => (
+              <TestimonialCard key={idx} {...t} delay={idx * 0.1} />
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-brand/10 via-transparent to-buy/10" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-display font-semibold text-white mb-6">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
               Ready to Start Trading?
             </h2>
-            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Join thousands of traders already using ORBITAL. Open your account in minutes 
-              and get access to professional-grade trading tools.
+            <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
+              Join thousands of traders who are already profiting with ORBITAL. 
+              Start with a free demo account today.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/auth" className="btn-primary flex items-center gap-2" data-testid="create-account-btn">
-                Create Free Account
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+            <button 
+              onClick={() => navigate('/auth')}
+              className="px-10 py-5 rounded-xl bg-brand text-white font-bold text-lg hover:bg-brand-hover transition-all hover:shadow-[0_0_50px_rgba(0,188,212,0.5)] inline-flex items-center gap-3"
+              data-testid="cta-final"
+            >
+              Create Free Account
+              <ArrowRight className="w-6 h-6" />
+            </button>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 border-t border-white/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
+      <footer className="border-t border-white/5 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid md:grid-cols-4 gap-10 mb-12">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-electric to-neon flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-space" />
-                </div>
-                <span className="font-display font-semibold text-white">ORBITAL</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Next-generation binary options trading platform for professional traders.
+              <Link to="/" className="text-2xl font-bold text-white">
+                <span className="text-brand">O</span>RBITAL
+              </Link>
+              <p className="text-sm text-gray-500 mt-4 leading-relaxed">
+                AI-powered binary options trading platform with real-time market data and professional tools.
               </p>
             </div>
-            
             <div>
-              <h4 className="font-medium text-white mb-4">Trading</h4>
+              <h4 className="font-semibold text-white mb-4">Trading</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li className="hover:text-white cursor-pointer">Forex</li>
-                <li className="hover:text-white cursor-pointer">Cryptocurrencies</li>
-                <li className="hover:text-white cursor-pointer">Precious Metals</li>
-                <li className="hover:text-white cursor-pointer">Economic Calendar</li>
+                <li><Link to="/auth" className="hover:text-white transition-colors">Binary Options</Link></li>
+                <li><Link to="/auth" className="hover:text-white transition-colors">Touch/No Touch</Link></li>
+                <li><Link to="/tournaments" className="hover:text-white transition-colors">Tournaments</Link></li>
+                <li><Link to="/auth" className="hover:text-white transition-colors">Affiliate</Link></li>
               </ul>
             </div>
-            
             <div>
-              <h4 className="font-medium text-white mb-4">Support</h4>
+              <h4 className="font-semibold text-white mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li className="hover:text-white cursor-pointer">Help Center</li>
-                <li className="hover:text-white cursor-pointer">Trading Guides</li>
-                <li className="hover:text-white cursor-pointer">API Documentation</li>
-                <li className="hover:text-white cursor-pointer">Contact Us</li>
+                <li className="hover:text-white cursor-pointer transition-colors">Help Center</li>
+                <li className="hover:text-white cursor-pointer transition-colors">Contact Us</li>
+                <li className="hover:text-white cursor-pointer transition-colors">FAQ</li>
               </ul>
             </div>
-            
             <div>
-              <h4 className="font-medium text-white mb-4">Legal</h4>
+              <h4 className="font-semibold text-white mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link to="/legal/terms" className="hover:text-white">Terms of Service</Link></li>
-                <li><Link to="/legal/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                <li><Link to="/legal/risk" className="hover:text-white">Risk Disclosure</Link></li>
-                <li className="hover:text-white cursor-pointer">AML Policy</li>
+                <li><Link to="/legal/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link to="/legal/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/legal/risk" className="hover:text-white transition-colors">Risk Disclosure</Link></li>
               </ul>
             </div>
           </div>
           
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-gray-500">
-              © 2026 ORBITAL Trading. All rights reserved.
-            </p>
+          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-gray-500">© 2026 ORBITAL Trading. All rights reserved.</p>
             <p className="text-xs text-gray-600 max-w-xl text-center md:text-right">
-              Risk Warning: Binary options trading involves substantial risk and may not be suitable 
-              for all investors. Past performance is not indicative of future results.
+              <span className="text-sell">Risk Warning:</span> Binary options trading involves substantial risk and may not be suitable for all investors.
             </p>
           </div>
         </div>

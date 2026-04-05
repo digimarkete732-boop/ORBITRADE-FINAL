@@ -661,10 +661,10 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              <div className="overflow-x-auto max-h-[200px]">
+              <div className="overflow-x-auto max-h-[200px] custom-scrollbar">
                 <table className="w-full text-left">
-                  <thead className="sticky top-0 bg-[#0a0f1a]">
-                    <tr className="text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/[0.04]">
+                  <thead className="sticky top-0 bg-panel z-10">
+                    <tr className="text-[10px] text-gray-500 uppercase tracking-wider border-b border-white/5">
                       <th className="px-4 py-2 font-medium">Asset</th>
                       <th className="px-4 py-2 font-medium">Type</th>
                       <th className="px-4 py-2 font-medium">Entry</th>
@@ -680,44 +680,44 @@ const Dashboard = () => {
                       const cp = getCurrentPrice(trade.asset, trade.asset_type);
                       const isWin = (trade.direction === 'buy' || trade.direction === 'call')
                         ? cp > trade.strike_price : cp < trade.strike_price;
-                      const prog = Math.min(100, (tl / (trade.expiry_seconds * 1000)) * 100);
+                      const prog = Math.max(0, Math.min(100, (tl / (trade.expiry_seconds * 1000)) * 100));
 
                       return (
-                        <tr key={trade.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors text-xs">
+                        <tr key={trade.id} className="border-b border-white/[0.02] hover:bg-white/[0.03] transition-colors text-xs">
                           <td className="px-4 py-2">
                             <span className="font-semibold text-white">{trade.asset}</span>
                           </td>
                           <td className="px-4 py-2">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               (trade.direction === 'buy' || trade.direction === 'call')
-                                ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                                ? 'bg-buy/20 text-buy' : 'bg-sell/20 text-sell'
                             }`}>
                               {trade.direction === 'call' ? 'BUY' : trade.direction === 'put' ? 'SELL' : trade.direction.toUpperCase()}
                             </span>
                           </td>
                           <td className="px-4 py-2 font-mono text-gray-400">{formatPrice(trade.strike_price, trade.asset_type)}</td>
                           <td className={`px-4 py-2 font-mono font-medium ${
-                            trade.status === 'open' ? (isWin ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500'
+                            trade.status === 'open' ? (isWin ? 'text-buy' : 'text-sell') : 'text-gray-500'
                           }`}>
                             {trade.status === 'open' ? formatPrice(cp, trade.asset_type) : formatPrice(trade.close_price, trade.asset_type)}
                           </td>
                           <td className="px-4 py-2 font-mono text-white">${trade.amount.toFixed(2)}</td>
                           <td className="px-4 py-2">
                             {showHistory ? (
-                              <span className={`font-mono font-bold ${trade.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              <span className={`font-mono font-bold ${trade.profit >= 0 ? 'text-buy' : 'text-sell'}`}>
                                 {trade.profit >= 0 ? '+' : ''}${trade.profit?.toFixed(2)}
                               </span>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className={`font-mono font-bold tabular-nums ${
-                                  tl > 10000 ? 'text-amber-400' : tl > 3000 ? 'text-orange-400' : 'text-red-400 animate-pulse'
+                                <span className={`font-mono font-bold tabular-nums min-w-[40px] ${
+                                  tl > 10000 ? 'text-amber-400' : tl > 3000 ? 'text-orange-400' : 'text-sell animate-pulse'
                                 }`}>
                                   {formatTimeLeft(tl)}
                                 </span>
                                 <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full ${
-                                    tl > 10000 ? 'bg-amber-500' : tl > 3000 ? 'bg-orange-500' : 'bg-red-500'
-                                  }`} style={{ width: `${prog}%`, transition: 'width 0.05s linear' }} />
+                                  <div className={`h-full rounded-full transition-all duration-100 ${
+                                    tl > 10000 ? 'bg-amber-500' : tl > 3000 ? 'bg-orange-500' : 'bg-sell'
+                                  }`} style={{ width: `${prog}%` }} />
                                 </div>
                               </div>
                             )}
