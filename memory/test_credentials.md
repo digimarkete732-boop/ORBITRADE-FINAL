@@ -17,3 +17,6 @@
 ## App URL
 - Frontend: https://crypto-trade-demo.preview.emergentagent.com
 - Backend API: https://crypto-trade-demo.preview.emergentagent.com/api
+
+## localStorage Key
+- Token is stored as `orbitrade_token` (renamed from `orbital_token`)
