@@ -18,46 +18,51 @@ Professional Binary Options Trading Platform with AI predictions, tournaments, a
 - **Fonts**: Outfit (headings), IBM Plex Sans (body), IBM Plex Mono (numbers)
 - **Animations**: Framer Motion for page transitions, scroll effects
 - **Mobile**: Fully responsive with hamburger menu
+- **Ambient BG**: PageBackground component with subtle gradient orbs on all pages
 
 ## All Features Implemented
 
-### Branding & PWA (Latest - April 2026)
-- [x] ORBITRADE branding across entire project (renamed from ORBITAL)
-- [x] Professional SVG logo with orbital ring + trading bars design
-- [x] Favicon: SVG, ICO, PNG (16, 32, 48px)
-- [x] PWA manifest with 192x192 and 512x512 icons (any + maskable)
+### Branding & PWA (April 2026)
+- [x] ORBITRADE branding across entire project
+- [x] Professional SVG logo with orbital ring + trading bars
+- [x] Favicon: SVG, ICO, PNG (16/32/48px)
+- [x] PWA manifest with 192/512px icons (any + maskable)
 - [x] Apple touch icon (180x180)
-- [x] Open Graph meta tags for social media sharing
-- [x] Twitter Card meta tags
-- [x] OG image (1200x630) for link previews
-- [x] Mobile asset selector dropdown (replaces list on mobile)
+- [x] Open Graph + Twitter Card meta tags
+- [x] OG image (1200x630) for social link previews
+- [x] Mobile asset selector dropdown
+- [x] PWA install prompt (professional, dismissible)
+- [x] Consistent background across ALL pages (bg-app + ambient gradients)
 
-### UI/UX
-- [x] Professional landing page with hero, features, testimonials, CTAs
-- [x] Live price ticker marquee (scrolling)
-- [x] Dark color scheme matching professional trading platforms
-- [x] Scroll animations with Framer Motion
-- [x] Full mobile responsiveness
-- [x] Trade timer FIX - countdown works properly
+### Admin Panel
+- [x] Overview dashboard with stats
+- [x] User management (search, edit, balance adjust, KYC)
+- [x] Deposit management (approve/reject with screenshot viewer)
+- [x] Withdrawal management (approve/reject)
+- [x] Win Rate Control (platform house edge slider)
+- [x] Tournament management (Create, Edit, Stop/Resume, Delete)
+- [x] Commission structure settings (3-tier)
+- [x] Payment settings (deposit/withdrawal fees, min/max, auto-approve, processing time)
+- [x] Promotions (create deposit bonuses)
+- [x] Broadcast notifications
 
 ### Trading System
 - [x] Binary Options (BUY/SELL High/Low)
 - [x] Touch/No Touch trading
-- [x] 5-60 second expiry with WORKING countdown timer
+- [x] 5-60 second expiry with countdown timer
 - [x] Real-time price feeds (Forex, Crypto, Metals)
-- [x] AI trading predictions (52%/48% confidence)
-- [x] Platform win rate control (house edge)
+- [x] AI trading predictions
+- [x] Platform win rate control
 
 ### Payment System
 - [x] Manual Crypto Deposit with blockchain animation
 - [x] Deposit Bonus with wagering requirements
 - [x] Withdrawal requests
-- [x] Admin notifications for all requests
+- [x] Admin notifications
 
 ### Additional Features
 - [x] Trading Tournaments with leaderboards
 - [x] Affiliate System (3-tier commissions)
-- [x] Win Rate Control for Admin
 - [x] Legal Pages (ToS, Privacy, Risk)
 - [x] Push Notifications
 
@@ -70,9 +75,9 @@ Professional Binary Options Trading Platform with AI predictions, tournaments, a
 ## Pending / Future Tasks
 - P0: Deploy the application
 - P2: S3 storage for KYC documents
-- P2: Real payment gateway integration for withdrawals
+- P2: Real payment gateway integration
 - P2: Automated tournament scheduling
 - P2: Automated deposit detection via blockchain APIs
-- P2: Refactor server.py (2700+ lines) into modular routes
+- P2: Refactor server.py into modular routes
 
-## Date: 2026-04-05 (Branding & PWA Update Complete)
+## Date: 2026-04-05 (Admin Features + BG + PWA Update)
