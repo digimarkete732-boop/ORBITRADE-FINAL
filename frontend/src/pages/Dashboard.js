@@ -4,7 +4,7 @@ import {
   Globe, ArrowUp, ArrowDown, Clock, 
   TrendingUp, TrendingDown, Wallet, Zap, Activity,
   MessageCircle, X, Send, Minus, Plus, Sparkles, Target,
-  ChevronRight, BarChart3, DollarSign, Eye, Flame
+  ChevronRight, BarChart3, DollarSign, Eye, Flame, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +39,9 @@ const Dashboard = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
+  
+  // Mobile asset selector dropdown state
+  const [mobileAssetOpen, setMobileAssetOpen] = useState(false);
 
   const countdownRef = useRef(null);
   const predictionRef = useRef(null);
@@ -358,9 +361,102 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Mobile Asset Selector Dropdown */}
+          <div className="lg:hidden mb-2 relative">
+            <button 
+              onClick={() => setMobileAssetOpen(!mobileAssetOpen)}
+              className="w-full flex items-center justify-between bg-panel border border-white/10 rounded-xl px-4 py-3"
+              data-testid="mobile-asset-selector"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                  selectedAsset?.asset_type === 'crypto' ? 'bg-amber-500/10 text-amber-400' :
+                  selectedAsset?.asset_type === 'metals' ? 'bg-yellow-500/10 text-yellow-400' :
+                  'bg-brand/10 text-brand'
+                }`}>
+                  {selectedAsset?.symbol?.split('/')[0]?.slice(0, 3) || 'EUR'}
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">{selectedAsset?.symbol || 'EUR/USD'}</div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={`font-mono ${getChange24h(selectedAsset?.symbol, selectedAsset?.asset_type) >= 0 ? 'text-buy' : 'text-sell'}`}>
+                      {formatPrice(currentPriceVal, selectedAsset?.asset_type)}
+                    </span>
+                    <span className={`${getChange24h(selectedAsset?.symbol, selectedAsset?.asset_type) >= 0 ? 'text-buy' : 'text-sell'}`}>
+                      {getChange24h(selectedAsset?.symbol, selectedAsset?.asset_type) >= 0 ? '+' : ''}{getChange24h(selectedAsset?.symbol, selectedAsset?.asset_type).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${mobileAssetOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            <AnimatePresence>
+              {mobileAssetOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute z-30 w-full mt-2 bg-panel border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-[60vh] overflow-y-auto"
+                >
+                  {/* Category Tabs */}
+                  <div className="sticky top-0 bg-panel border-b border-white/5 p-2 flex gap-1">
+                    {['forex', 'crypto', 'metals'].map(cat => (
+                      <button key={cat}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                          selectedCategory === cat ? 'bg-brand text-white' : 'text-gray-500 hover:bg-white/5'
+                        }`}
+                        onClick={() => setSelectedCategory(cat)}
+                      >{cat}</button>
+                    ))}
+                  </div>
+                  
+                  {/* Asset List */}
+                  <div className="p-2 space-y-1">
+                    {filteredAssets.map(asset => {
+                      const price = getCurrentPrice(asset.symbol, asset.asset_type);
+                      const change = getChange24h(asset.symbol, asset.asset_type);
+                      const isSelected = selectedAsset?.symbol === asset.symbol;
+                      return (
+                        <button key={asset.symbol}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
+                            isSelected ? 'bg-brand/10 border border-brand/20' : 'hover:bg-white/5'
+                          }`}
+                          onClick={() => { setSelectedAsset(asset); setMobileAssetOpen(false); }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold ${
+                              asset.asset_type === 'crypto' ? 'bg-amber-500/10 text-amber-400' :
+                              asset.asset_type === 'metals' ? 'bg-yellow-500/10 text-yellow-400' :
+                              'bg-brand/10 text-brand'
+                            }`}>
+                              {asset.symbol.split('/')[0].slice(0, 3)}
+                            </div>
+                            <div className="text-left">
+                              <div className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{asset.symbol}</div>
+                              <div className="text-[10px] text-gray-600">{Math.round(asset.payout_rate * 100)}% payout</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-mono text-sm font-medium ${change >= 0 ? 'text-buy' : 'text-sell'}`}>
+                              {formatPrice(price, asset.asset_type)}
+                            </div>
+                            <div className={`text-[10px] ${change >= 0 ? 'text-buy' : 'text-sell'}`}>
+                              {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-            {/* Left: Asset List */}
-            <div className="lg:col-span-2 bg-white/[0.02] rounded-xl border border-white/[0.04] flex flex-col h-[200px] sm:h-[300px] lg:h-[460px] overflow-hidden">
+            {/* Left: Asset List - Hidden on Mobile */}
+            <div className="hidden lg:flex lg:col-span-2 bg-white/[0.02] rounded-xl border border-white/[0.04] flex-col h-[460px] overflow-hidden">
               <div className="px-3 pt-3 pb-2">
                 <div className="flex gap-1">
                   {['forex', 'crypto', 'metals'].map(cat => (

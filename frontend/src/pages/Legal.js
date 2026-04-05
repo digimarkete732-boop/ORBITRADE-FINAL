@@ -12,7 +12,7 @@ const LEGAL_CONTENT = {
     sections: [
       {
         title: '1. Acceptance of Terms',
-        content: `By accessing or using the ORBITAL Trading Platform ("Platform"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Platform. The Platform is operated by ORBITAL Ltd. and provides binary options trading services for forex, cryptocurrencies, and precious metals.`
+        content: `By accessing or using the ORBITRADE Trading Platform ("Platform"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Platform. The Platform is operated by ORBITRADE Ltd. and provides binary options trading services for forex, cryptocurrencies, and precious metals.`
       },
       {
         title: '2. Eligibility',
@@ -122,7 +122,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: '4. No Investment Advice',
-        content: `ORBITAL does not provide investment advice. AI predictions and market analysis are for informational purposes only and should not be considered recommendations. You are solely responsible for your trading decisions.`
+        content: `ORBITRADE does not provide investment advice. AI predictions and market analysis are for informational purposes only and should not be considered recommendations. You are solely responsible for your trading decisions.`
       },
       {
         title: '5. Leverage and Margin',
@@ -142,7 +142,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: '9. Acknowledgment',
-        content: `By using ORBITAL, you acknowledge: You have read and understood these risks; You have sufficient knowledge and experience; You accept full responsibility for your decisions; You will not hold ORBITAL liable for trading losses.`
+        content: `By using ORBITRADE, you acknowledge: You have read and understood these risks; You have sufficient knowledge and experience; You accept full responsibility for your decisions; You will not hold ORBITRADE liable for trading losses.`
       },
       {
         title: '10. Seek Professional Advice',

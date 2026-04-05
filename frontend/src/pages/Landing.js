@@ -120,7 +120,7 @@ const Landing = () => {
   ];
 
   const testimonials = [
-    { name: 'Michael Chen', role: 'Professional Trader', content: 'The AI predictions are incredibly accurate. I\'ve increased my win rate by 40% since joining ORBITAL.', rating: 5 },
+    { name: 'Michael Chen', role: 'Professional Trader', content: 'The AI predictions are incredibly accurate. I\'ve increased my win rate by 40% since joining ORBITRADE.', rating: 5 },
     { name: 'Sarah Johnson', role: 'Crypto Enthusiast', content: 'Finally a platform that combines simplicity with professional tools. The mobile app is flawless.', rating: 5 },
     { name: 'David Williams', role: 'Day Trader', content: 'Fast execution, great payouts, and the tournament feature keeps me coming back. Highly recommended!', rating: 5 },
   ];
@@ -183,7 +183,7 @@ const Landing = () => {
             transition={{ duration: 0.8, delay: 0.1 }}
           >
             Trade Smarter with<br />
-            <span className="text-gradient-brand">ORBITAL</span>
+            <span className="text-gradient-brand">ORBITRADE</span>
           </motion.h1>
           
           <motion.p 
@@ -377,7 +377,7 @@ const Landing = () => {
               Ready to Start Trading?
             </h2>
             <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
-              Join thousands of traders who are already profiting with ORBITAL. 
+              Join thousands of traders who are already profiting with ORBITRADE. 
               Start with a free demo account today.
             </p>
             <button 
@@ -432,7 +432,7 @@ const Landing = () => {
           </div>
           
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-gray-500">© 2026 ORBITAL Trading. All rights reserved.</p>
+            <p className="text-sm text-gray-500">© 2026 ORBITRADE Trading. All rights reserved.</p>
             <p className="text-xs text-gray-600 max-w-xl text-center md:text-right">
               <span className="text-sell">Risk Warning:</span> Binary options trading involves substantial risk and may not be suitable for all investors.
             </p>

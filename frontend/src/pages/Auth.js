@@ -207,7 +207,7 @@ const Auth = () => {
         else navigate('/dashboard');
       } else {
         await register(formData.email, formData.password, formData.full_name, referralCode);
-        toast.success('Account created! Welcome to ORBITAL!');
+        toast.success('Account created! Welcome to ORBITRADE!');
         navigate('/account-setup');
       }
     } catch (error) {

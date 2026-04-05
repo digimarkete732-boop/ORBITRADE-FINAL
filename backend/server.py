@@ -1,5 +1,5 @@
 """
-ORBITAL Trading Platform - Main Server
+ORBITRADE Trading Platform - Main Server
 Binary Options Trading for Forex, Crypto, and Precious Metals
 """
 import os
@@ -470,11 +470,11 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(process_expiring_trades())
     asyncio.create_task(check_touch_trades())  # Touch/No Touch monitoring
     
-    logger.info("ORBITAL Trading Platform started")
+    logger.info("ORBITRADE Trading Platform started")
     yield
     
     client.close()
-    logger.info("ORBITAL Trading Platform shutdown")
+    logger.info("ORBITRADE Trading Platform shutdown")
 
 async def seed_default_assets():
     """Seed default trading assets"""
@@ -852,7 +852,7 @@ async def get_current_price(asset: str) -> float:
 
 # ==================== FASTAPI APP ====================
 
-fastapi_app = FastAPI(title="ORBITAL Trading Platform", version="1.0.0", lifespan=lifespan)
+fastapi_app = FastAPI(title="ORBITRADE Trading Platform", version="1.0.0", lifespan=lifespan)
 
 fastapi_app.add_middleware(
     CORSMiddleware,
@@ -978,7 +978,7 @@ async def setup_2fa(request: Request):
     
     # Create QR code
     totp = pyotp.TOTP(secret)
-    provisioning_uri = totp.provisioning_uri(user["email"], issuer_name="ORBITAL Trading")
+    provisioning_uri = totp.provisioning_uri(user["email"], issuer_name="ORBITRADE Trading")
     
     # Generate QR code image
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -1878,7 +1878,7 @@ async def chat_with_ai(request: Request, data: ChatMessage):
         chat = LlmChat(
             api_key=api_key,
             session_id=session_id,
-            system_message="""You are ORBITAL's AI Trading Assistant. You help users with:
+            system_message="""You are ORBITRADE's AI Trading Assistant. You help users with:
 - Understanding binary options trading
 - Explaining platform features
 - Providing market insights (without financial advice)

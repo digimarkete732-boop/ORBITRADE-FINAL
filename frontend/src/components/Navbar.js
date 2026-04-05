@@ -1,8 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, LogOut, Menu, X, ArrowLeftRight, User, Trophy, Wallet, Bell, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, X, ArrowLeftRight, User, Trophy, Wallet, Bell, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+
+// Professional ORBITRADE Logo Component
+const OrbitradeLogo = ({ size = 'default' }) => {
+  const sizes = {
+    small: { container: 'w-7 h-7', orbit: 28, bar: 8 },
+    default: { container: 'w-8 h-8', orbit: 32, bar: 10 },
+    large: { container: 'w-12 h-12', orbit: 48, bar: 14 }
+  };
+  const s = sizes[size] || sizes.default;
+  
+  return (
+    <div className={`${s.container} relative flex items-center justify-center`}>
+      <svg viewBox="0 0 40 40" className="w-full h-full">
+        {/* Outer orbit ring */}
+        <circle cx="20" cy="20" r="17" fill="none" stroke="url(#orbitGrad)" strokeWidth="2" opacity="0.6" />
+        {/* Inner orbit ring */}
+        <circle cx="20" cy="20" r="12" fill="none" stroke="url(#orbitGrad)" strokeWidth="1.5" opacity="0.4" />
+        {/* Center trading bars */}
+        <rect x="14" y="16" width="3" height="12" rx="1" fill="url(#barGrad1)" />
+        <rect x="18.5" y="12" width="3" height="16" rx="1" fill="url(#barGrad2)" />
+        <rect x="23" y="18" width="3" height="10" rx="1" fill="url(#barGrad1)" />
+        {/* Orbiting dot */}
+        <circle cx="33" cy="12" r="2.5" fill="#00BCD4">
+          <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="8s" repeatCount="indefinite" />
+        </circle>
+        {/* Gradients */}
+        <defs>
+          <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#00BCD4" />
+            <stop offset="100%" stopColor="#00BFA5" />
+          </linearGradient>
+          <linearGradient id="barGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#00BCD4" />
+            <stop offset="100%" stopColor="#00838F" />
+          </linearGradient>
+          <linearGradient id="barGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#00BFA5" />
+            <stop offset="100%" stopColor="#00796B" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
+};
 
 const Navbar = () => {
   const { user, token, logout, isDemoMode, toggleAccountMode } = useAuth();
@@ -48,11 +92,9 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2" data-testid="logo">
-            <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-white">
-              <span className="text-brand">O</span>RBITAL
+            <OrbitradeLogo />
+            <span className="text-lg font-bold text-white tracking-tight">
+              <span className="text-brand">ORBIT</span>RADE
             </span>
           </Link>
 
@@ -203,4 +245,5 @@ const Navbar = () => {
   );
 };
 
+export { OrbitradeLogo };
 export default Navbar;
