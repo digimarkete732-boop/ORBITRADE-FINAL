@@ -1,71 +1,54 @@
 # ORBITAL Trading Platform - PRD
 
 ## Overview
-Binary Options Trading Platform with full production features: real market data, AI predictions, tournaments, and admin controls.
+Professional Binary Options Trading Platform with AI predictions, tournaments, and complete admin controls.
 
 ## Tech Stack
 - **Backend**: Python FastAPI + Socket.IO + MongoDB
-- **Frontend**: React 18 + TailwindCSS + Framer Motion
+- **Frontend**: React 18 + TailwindCSS + Framer Motion + Lenis
 - **Charts**: TradingView Lightweight Charts
 - **AI**: OpenAI GPT-5.2 (via Emergent LLM)
 - **Real-time**: WebSocket for price feeds
 
-## Core Features (All Implemented)
+## Design System (NEW - April 2026)
+- **Background**: #080808 (app) / #121212 (panel) / #1A1A1A (elevated)
+- **Brand**: #00BCD4 (cyan) with #26C6DA hover
+- **Buy/Win**: #00BFA5 (teal green)
+- **Sell/Lose**: #E53935 (red)
+- **Fonts**: Outfit (headings), IBM Plex Sans (body), IBM Plex Mono (numbers)
+- **Animations**: Framer Motion for page transitions, scroll effects
+- **Mobile**: Fully responsive with hamburger menu
+
+## All Features Implemented
+
+### UI/UX (NEW)
+- [x] Professional landing page with hero, features, testimonials, CTAs
+- [x] Live price ticker marquee (scrolling)
+- [x] New dark color scheme matching professional trading platforms
+- [x] Scroll animations with Framer Motion
+- [x] Full mobile responsiveness
+- [x] Trade timer FIX - countdown works properly (28s, 27s, etc.)
 
 ### Trading System
-- [x] Binary Options trading (BUY/SELL High/Low)
-- [x] Touch/No Touch trading options
-- [x] 5-60 second expiry timeframes
-- [x] Trade settlement with ACTUAL market prices (with platform win rate control)
+- [x] Binary Options (BUY/SELL High/Low)
+- [x] Touch/No Touch trading
+- [x] 5-60 second expiry with WORKING countdown timer
 - [x] Real-time price feeds (Forex, Crypto, Metals)
-- [x] AI trading predictions
+- [x] AI trading predictions (52%/48% confidence)
+- [x] Platform win rate control (house edge)
 
 ### Payment System
-- [x] Manual Crypto Deposit with blockchain confirmation animation
-- [x] Cryptocurrency options: USDT TRC20/ERC20, BTC, ETH, LTC
-- [x] Deposit Bonus System with wagering requirements (30x default)
-- [x] Withdrawal requests with wallet address
-- [x] Admin notifications for all deposit/withdrawal requests
+- [x] Manual Crypto Deposit with blockchain animation
+- [x] Deposit Bonus with wagering requirements
+- [x] Withdrawal requests
+- [x] Admin notifications for all requests
 
-### Platform Win Rate Control (House Edge)
-- [x] Admin can set user win rate (20-70%)
-- [x] House edge automatically calculated
-- [x] Per-asset override support
-- [x] Real-time application to trade settlements
-
-### Trading Tournaments
-- [x] Weekly/Daily/Monthly tournaments
-- [x] Prize pool configuration
-- [x] Real-time leaderboard (ranked by profit)
-- [x] Free entry, participants tracked
-- [x] Auto-update stats on trades
-
-### Affiliate System
-- [x] Direct Commission: 5% on deposits
-- [x] Indirect Commission: 2% on downline (3 levels)
-- [x] Revenue Share: 10% on trading profits
-- [x] Admin-controlled commission structure
-
-### Push Notifications
-- [x] Trade settlement notifications
-- [x] Deposit bonus notifications
-- [x] Admin alerts for deposits/withdrawals
-- [x] WebSocket real-time delivery
-
-### Legal Pages
-- [x] Terms of Service
-- [x] Privacy Policy
-- [x] Risk Disclosure
-- Full content with all required sections
-
-### Admin Panel
-- [x] User management
-- [x] KYC Document viewer
-- [x] Deposit/Withdrawal management
-- [x] Win Rate Control slider
-- [x] Tournament creation
-- [x] Commission structure editor
-- [x] Promotion creation with wagering
+### Additional Features
+- [x] Trading Tournaments with leaderboards
+- [x] Affiliate System (3-tier commissions)
+- [x] Win Rate Control for Admin
+- [x] Legal Pages (ToS, Privacy, Risk)
+- [x] Push Notifications
 
 ## Test Accounts
 | Account | Email | Password |
@@ -73,12 +56,4 @@ Binary Options Trading Platform with full production features: real market data,
 | Admin | admin@orbitrade.live | password |
 | User | masteruser@orbitrade.live | password |
 
-## API Endpoints (New)
-- POST /api/admin/platform-settings - Win rate control
-- GET/POST /api/tournaments - Tournament management
-- POST /api/tournaments/{id}/join - Join tournament
-- GET /api/tournaments/{id}/leaderboard - Get rankings
-- GET /api/notifications - User notifications
-- GET /api/bonuses/my - User bonus status
-
-## Date: 2026-04-05
+## Date: 2026-04-05 (UI Overhaul Complete)
