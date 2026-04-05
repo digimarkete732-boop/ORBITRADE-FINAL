@@ -124,6 +124,33 @@ class AdminPromotion(BaseModel):
     max_bonus: float
     active: bool = True
 
+class DepositRequest(BaseModel):
+    amount: float
+    currency: str
+    tx_hash: str
+    screenshot: Optional[str] = None  # base64
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+class TouchTradeCreate(BaseModel):
+    asset: str
+    trade_type: str  # "touch" or "no_touch"
+    target_price: float
+    amount: float
+    expiry_seconds: int
+
+class CommissionStructure(BaseModel):
+    direct_percent: float = 5.0
+    indirect_percent: float = 2.0
+    revenue_share_percent: float = 10.0
+    levels: int = 3
+    active: bool = True
+
 class AssetConfig(BaseModel):
     symbol: str
     name: str
@@ -656,8 +683,12 @@ async def get_current_price(asset: str) -> float:
     if asset in price_cache.get("metals", {}):
         return price_cache["metals"][asset].get("price", 0)
     
-    # Fallback to simulated price
-    return random.uniform(100, 10000)
+    # Fallback to last known price from DB
+    last_trade = await db.trades.find_one({"asset": asset, "close_price": {"$ne": None}}, sort=[("settled_at", -1)])
+    if last_trade and last_trade.get("close_price"):
+        return last_trade["close_price"]
+    
+    return 0
 
 # ==================== FASTAPI APP ====================
 
@@ -952,7 +983,7 @@ async def upload_kyc_document(request: Request):
             "user_id": user["id"],
             "document_type": doc_type,
             "file_name": file_name,
-            "file_data": file_data[:100] + "...",  # Store reference only, not full file
+            "file_data": file_data,
             "status": "pending",
             "uploaded_at": datetime.now(timezone.utc)
         })
@@ -1831,6 +1862,313 @@ async def admin_kyc_action(request: Request, user_id: str, data: dict = Body(...
         raise HTTPException(status_code=400, detail="Invalid action")
     
     return {"message": f"KYC {action}d for user {user_id}"}
+
+@fastapi_app.get("/api/admin/users/{user_id}/kyc-documents")
+async def admin_get_kyc_documents(request: Request, user_id: str):
+    """Admin view KYC documents with full file data"""
+    await get_admin_user(request)
+    docs = await db.kyc_documents.find({"user_id": user_id}).to_list(10)
+    return [serialize_doc(d) for d in docs]
+
+# ==================== MANUAL CRYPTO DEPOSIT ====================
+
+@fastapi_app.post("/api/deposits")
+async def create_deposit(request: Request, data: DepositRequest):
+    """User submits crypto deposit with tx hash and screenshot"""
+    user = await get_current_user(request)
+    
+    if data.amount < 10:
+        raise HTTPException(status_code=400, detail="Minimum deposit: $10")
+    
+    deposit = {
+        "user_id": user["id"],
+        "amount": data.amount,
+        "currency": data.currency,
+        "tx_hash": data.tx_hash,
+        "screenshot": data.screenshot,
+        "status": "blockchain_confirming",
+        "created_at": datetime.now(timezone.utc),
+        "confirmed_at": None,
+        "reviewed_by": None
+    }
+    result = await db.deposits.insert_one(deposit)
+    deposit["id"] = str(result.inserted_id)
+    
+    return {"message": "Deposit submitted", "status": "blockchain_confirming", "deposit_id": str(result.inserted_id)}
+
+@fastapi_app.get("/api/deposits")
+async def get_user_deposits(request: Request):
+    user = await get_current_user(request)
+    deposits = await db.deposits.find({"user_id": user["id"]}).sort("created_at", -1).to_list(50)
+    return [serialize_doc(d) for d in deposits]
+
+@fastapi_app.get("/api/admin/deposits")
+async def admin_get_deposits(request: Request):
+    await get_admin_user(request)
+    deposits = await db.deposits.find({}).sort("created_at", -1).to_list(100)
+    result = []
+    for d in deposits:
+        doc = serialize_doc(d)
+        u = await db.users.find_one({"_id": d["user_id"]}, {"email": 1, "full_name": 1})
+        doc["user_email"] = u.get("email", "") if u else ""
+        doc["user_name"] = u.get("full_name", "") if u else ""
+        result.append(doc)
+    return result
+
+@fastapi_app.put("/api/admin/deposits/{deposit_id}")
+async def admin_process_deposit(request: Request, deposit_id: str, data: dict = Body(...)):
+    admin = await get_admin_user(request)
+    from bson import ObjectId
+    
+    action = data.get("action")
+    if action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="Invalid action")
+    
+    deposit = await db.deposits.find_one({"_id": ObjectId(deposit_id)})
+    if not deposit:
+        raise HTTPException(status_code=404, detail="Deposit not found")
+    
+    if action == "approve":
+        await db.deposits.update_one(
+            {"_id": ObjectId(deposit_id)},
+            {"$set": {"status": "confirmed", "confirmed_at": datetime.now(timezone.utc), "reviewed_by": admin["id"]}}
+        )
+        # Credit user balance (real_balance if in demo mode, balance if in real mode)
+        user = await db.users.find_one({"_id": deposit["user_id"]})
+        if user:
+            if user.get("account_mode") == "demo":
+                await db.users.update_one({"_id": deposit["user_id"]}, {"$inc": {"real_balance": deposit["amount"]}})
+            else:
+                await db.users.update_one({"_id": deposit["user_id"]}, {"$inc": {"balance": deposit["amount"]}})
+            
+            # Process affiliate commissions on deposit
+            await process_affiliate_commissions(deposit["user_id"], deposit["amount"], "deposit")
+        
+        await db.transactions.insert_one({
+            "user_id": deposit["user_id"], "type": "deposit", "amount": deposit["amount"],
+            "status": "completed", "description": f"Crypto deposit {deposit['currency']}", "created_at": datetime.now(timezone.utc)
+        })
+    else:
+        await db.deposits.update_one(
+            {"_id": ObjectId(deposit_id)},
+            {"$set": {"status": "rejected", "confirmed_at": datetime.now(timezone.utc), "reviewed_by": admin["id"]}}
+        )
+    
+    return {"message": f"Deposit {action}d"}
+
+# ==================== PASSWORD RESET ====================
+
+@fastapi_app.post("/api/auth/forgot-password")
+async def forgot_password(data: PasswordResetRequest):
+    user = await db.users.find_one({"email": data.email})
+    if not user:
+        return {"message": "If email exists, a reset token has been generated"}
+    
+    token = str(random.randint(100000, 999999))
+    await db.password_resets.insert_one({
+        "user_id": user["_id"],
+        "email": data.email,
+        "token": token,
+        "used": False,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=1)
+    })
+    
+    return {"message": "If email exists, a reset token has been generated", "reset_token": token}
+
+@fastapi_app.post("/api/auth/reset-password")
+async def reset_password(data: PasswordResetConfirm):
+    now = datetime.now(timezone.utc)
+    reset = await db.password_resets.find_one({
+        "token": data.token, "used": False, "expires_at": {"$gte": now}
+    })
+    
+    if not reset:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    await db.users.update_one({"_id": reset["user_id"]}, {"$set": {"password": get_password_hash(data.new_password)}})
+    await db.password_resets.update_one({"_id": reset["_id"]}, {"$set": {"used": True}})
+    
+    return {"message": "Password reset successful"}
+
+@fastapi_app.post("/api/admin/users/{user_id}/reset-password")
+async def admin_reset_password(request: Request, user_id: str):
+    """Admin generates a password reset token for a user"""
+    await get_admin_user(request)
+    user = await db.users.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    token = str(random.randint(100000, 999999))
+    await db.password_resets.insert_one({
+        "user_id": user_id, "email": user["email"], "token": token,
+        "used": False, "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=24)
+    })
+    return {"token": token, "email": user["email"]}
+
+# ==================== TOUCH/NO TOUCH OPTIONS ====================
+
+@fastapi_app.post("/api/trades/touch")
+async def place_touch_trade(request: Request, data: TouchTradeCreate):
+    """Place a Touch/No Touch trade"""
+    user = await get_current_user(request)
+    
+    if data.trade_type not in ("touch", "no_touch"):
+        raise HTTPException(status_code=400, detail="Invalid trade type")
+    if data.amount < 1:
+        raise HTTPException(status_code=400, detail="Minimum amount: $1")
+    if data.amount > user.get("balance", 0):
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    if data.expiry_seconds not in [30, 60, 120, 300, 600]:
+        raise HTTPException(status_code=400, detail="Invalid expiry")
+    
+    asset = await db.assets.find_one({"symbol": data.asset, "is_active": True})
+    if not asset:
+        raise HTTPException(status_code=400, detail="Invalid asset")
+    
+    current_price = await get_current_price(data.asset)
+    if current_price <= 0:
+        raise HTTPException(status_code=400, detail="Price unavailable")
+    
+    trade_id = f"touch_{datetime.now(timezone.utc).timestamp()}_{random.randint(1000, 9999)}"
+    expiry_time = datetime.now(timezone.utc) + timedelta(seconds=data.expiry_seconds)
+    
+    trade = {
+        "_id": trade_id,
+        "user_id": user["id"],
+        "asset": data.asset,
+        "asset_type": asset["asset_type"],
+        "direction": data.trade_type,
+        "trade_type": data.trade_type,
+        "amount": data.amount,
+        "strike_price": current_price,
+        "target_price": data.target_price,
+        "payout_rate": asset["payout_rate"],
+        "expiry_seconds": data.expiry_seconds,
+        "expiry_time": expiry_time,
+        "status": "open",
+        "touched": False,
+        "close_price": None,
+        "profit": None,
+        "created_at": datetime.now(timezone.utc),
+        "settled_at": None
+    }
+    
+    await db.users.update_one({"_id": user["id"]}, {"$inc": {"balance": -data.amount}})
+    await db.trades.insert_one(trade)
+    
+    return serialize_doc(trade)
+
+# ==================== AFFILIATE SYSTEM ====================
+
+@fastapi_app.get("/api/affiliate/commission-structure")
+async def get_commission_structure(request: Request):
+    await get_current_user(request)
+    structure = await db.commission_structure.find_one({"active": True})
+    if not structure:
+        return {"direct_percent": 5.0, "indirect_percent": 2.0, "revenue_share_percent": 10.0, "levels": 3, "active": True}
+    return serialize_doc(structure)
+
+@fastapi_app.post("/api/admin/commission-structure")
+async def set_commission_structure(request: Request, data: CommissionStructure):
+    await get_admin_user(request)
+    await db.commission_structure.update_many({}, {"$set": {"active": False}})
+    result = await db.commission_structure.insert_one({
+        "direct_percent": data.direct_percent,
+        "indirect_percent": data.indirect_percent,
+        "revenue_share_percent": data.revenue_share_percent,
+        "levels": data.levels,
+        "active": data.active,
+        "created_at": datetime.now(timezone.utc)
+    })
+    return {"message": "Commission structure updated"}
+
+@fastapi_app.get("/api/admin/commission-structure")
+async def admin_get_commission_structure(request: Request):
+    await get_admin_user(request)
+    structures = await db.commission_structure.find({}).sort("created_at", -1).to_list(10)
+    return [serialize_doc(s) for s in structures]
+
+@fastapi_app.get("/api/affiliate/stats")
+async def get_affiliate_stats(request: Request):
+    user = await get_current_user(request)
+    
+    referrals = await db.users.find({"referred_by": user["id"]}).to_list(100)
+    commissions = await db.affiliate_commissions.find({"beneficiary_id": user["id"]}).sort("created_at", -1).to_list(100)
+    
+    total_earned = sum(c.get("amount", 0) for c in commissions)
+    direct_earned = sum(c.get("amount", 0) for c in commissions if c.get("commission_type") == "direct")
+    indirect_earned = sum(c.get("amount", 0) for c in commissions if c.get("commission_type") == "indirect")
+    revenue_share = sum(c.get("amount", 0) for c in commissions if c.get("commission_type") == "revenue_share")
+    
+    referral_code = user.get("referral_code", user["id"][:8])
+    if not user.get("referral_code"):
+        await db.users.update_one({"_id": user["id"]}, {"$set": {"referral_code": referral_code}})
+    
+    return {
+        "referral_code": referral_code,
+        "total_referrals": len(referrals),
+        "total_earned": round(total_earned, 2),
+        "direct_earned": round(direct_earned, 2),
+        "indirect_earned": round(indirect_earned, 2),
+        "revenue_share_earned": round(revenue_share, 2),
+        "recent_commissions": [serialize_doc(c) for c in commissions[:20]],
+        "referrals": [{"email": r.get("email", ""), "joined": r.get("created_at", ""), "id": r["_id"]} for r in referrals]
+    }
+
+async def process_affiliate_commissions(user_id: str, amount: float, commission_source: str):
+    """Process affiliate commissions when deposit or trade profit happens"""
+    try:
+        structure = await db.commission_structure.find_one({"active": True})
+        if not structure:
+            return
+        
+        user = await db.users.find_one({"_id": user_id})
+        if not user or not user.get("referred_by"):
+            return
+        
+        # Level 1: Direct commission
+        referrer_id = user.get("referred_by")
+        if referrer_id:
+            direct_amount = amount * (structure["direct_percent"] / 100)
+            if direct_amount > 0:
+                await db.affiliate_commissions.insert_one({
+                    "beneficiary_id": referrer_id,
+                    "source_user_id": user_id,
+                    "amount": round(direct_amount, 2),
+                    "commission_type": "direct" if commission_source == "deposit" else "revenue_share",
+                    "source": commission_source,
+                    "source_amount": amount,
+                    "created_at": datetime.now(timezone.utc)
+                })
+                await db.users.update_one({"_id": referrer_id}, {"$inc": {"balance": round(direct_amount, 2)}})
+        
+        # Level 2+: Indirect commissions
+        current_ref = referrer_id
+        for level in range(2, structure.get("levels", 3) + 1):
+            if not current_ref:
+                break
+            parent = await db.users.find_one({"_id": current_ref})
+            if not parent or not parent.get("referred_by"):
+                break
+            
+            current_ref = parent.get("referred_by")
+            indirect_amount = amount * (structure["indirect_percent"] / 100)
+            if indirect_amount > 0:
+                await db.affiliate_commissions.insert_one({
+                    "beneficiary_id": current_ref,
+                    "source_user_id": user_id,
+                    "amount": round(indirect_amount, 2),
+                    "commission_type": "indirect",
+                    "source": commission_source,
+                    "source_amount": amount,
+                    "level": level,
+                    "created_at": datetime.now(timezone.utc)
+                })
+                await db.users.update_one({"_id": current_ref}, {"$inc": {"balance": round(indirect_amount, 2)}})
+    except Exception as e:
+        logger.error(f"Affiliate commission error: {e}")
 
 # ==================== LEADERBOARD ====================
 
