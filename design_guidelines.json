@@ -1,0 +1,117 @@
+{
+  "project_name": "ORBITRADE",
+  "domain": "Finance / Binary Options Trading",
+  "theme": "DARK",
+  "archetype": "2 (Performance Pro) & 4 (Swiss & High-Contrast) Hybrid",
+  "emotion": "Professional, High-tech, Fast, Tactical, Trustworthy",
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "IBM Plex Mono",
+    "rules": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight font-bold text-white",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-semibold text-white",
+      "h3": "text-xl sm:text-2xl font-semibold text-white",
+      "body": "text-base leading-relaxed text-[#A3A3A3]",
+      "labels_overlines": "text-xs font-semibold tracking-[0.2em] uppercase text-[#A3A3A3]",
+      "numbers_tickers": "font-mono font-medium tracking-tight"
+    }
+  },
+  "colors": {
+    "background": {
+      "app": "#080808",
+      "panel": "#121212",
+      "elevated": "#1A1A1A",
+      "glass": "rgba(18, 18, 18, 0.7)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A3A3A3",
+      "muted": "#666666"
+    },
+    "brand": {
+      "primary": "#00BCD4",
+      "primary_hover": "#26C6DA",
+      "primary_glow": "rgba(0, 188, 212, 0.3)"
+    },
+    "trading": {
+      "buy_up": "#00BFA5",
+      "buy_up_hover": "#4CAF50",
+      "buy_glow": "rgba(0, 191, 165, 0.2)",
+      "sell_down": "#E53935",
+      "sell_down_hover": "#F44336",
+      "sell_glow": "rgba(229, 57, 53, 0.2)"
+    },
+    "borders": {
+      "default": "rgba(255, 255, 255, 0.1)",
+      "hover": "rgba(255, 255, 255, 0.2)"
+    }
+  },
+  "layout_and_spacing": {
+    "dashboard_grid": "Control Room Protocol: grid-cols-1 md:grid-cols-3 lg:grid-cols-4 lg:grid-cols-12 with gap-4 or gap-6. Dense, tactical minimalism.",
+    "landing_grid": "Tetris Protocol: grid-cols-1 md:grid-cols-8 lg:grid-cols-12 with wide gaps (gap-8 to gap-12). Asymmetrical and breathable.",
+    "container_padding": "Generous spacing. Main sections use py-24. Cards use p-6 or p-8.",
+    "border_radius": "Subtle roundness. rounded-lg or rounded-xl maximum (8px to 12px) for structural elements. Buttons rounded-md."
+  },
+  "surface_strategies": {
+    "dashboard_cards": "Flat solid background (#121212), 1px subtle border (border-white/10), no shadows. Crisp edges. On hover, slight lift and border color darkens/lightens.",
+    "headers": "Crystal Glass. bg-black/60 backdrop-blur-xl, 1px bottom border border-white/10.",
+    "buttons": "High contrast. Solid #00BCD4 for Primary, transparent with border-white/10 for Secondary. Trading buttons must use pure Buy/Sell colors with subtle internal glow.",
+    "hero_overlay": "Gradient overlay bg-gradient-to-b from-black/40 via-black/80 to-[#080808] to blend image perfectly into the page content."
+  },
+  "motion_and_interactions": {
+    "scrolling": "Lenis smooth scrolling is MANDATORY for the landing page.",
+    "landing_animations": "Framer Motion. Fade-in-up (y: 20, opacity: 0) for headings. Staggered children for feature cards.",
+    "dashboard_animations": "Minimalist micro-interactions. Instant feedback on Buy/Sell clicks with subtle scaling (scale: 0.98).",
+    "tickers": "react-fast-marquee for live crypto price feeds across the top header or hero bottom.",
+    "hover_states": "Always explicitly set text color on hover. Use focus-visible for accessibility."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "category": "hero_background",
+        "url": "https://images.unsplash.com/photo-1762278804729-13d330fad71a?crop=entropy&cs=srgb&fm=jpg",
+        "description": "Dark abstract neon tech background to create a cinematic trading atmosphere."
+      },
+      {
+        "category": "trading_platform_preview",
+        "url": "https://images.pexels.com/photos/5831522/pexels-photo-5831522.jpeg",
+        "description": "Professional trader confidently viewing stock market charts, used for 'About' or 'Why Us' section."
+      },
+      {
+        "category": "crypto_coins_feature",
+        "url": "https://images.pexels.com/photos/14269507/pexels-photo-14269507.jpeg",
+        "description": "Close up of Bitcoin and Ethereum coins on dark background, used for Crypto Deposit/Withdraw feature card."
+      },
+      {
+        "category": "ai_predictions_feature",
+        "url": "https://images.unsplash.com/photo-1773558057883-c15a220761ce?crop=entropy&cs=srgb&fm=jpg",
+        "description": "Abstract blue radiating lines for AI predictions and real-time feeds feature card."
+      },
+      {
+        "category": "tournaments_feature",
+        "url": "https://images.pexels.com/photos/8048194/pexels-photo-8048194.jpeg",
+        "description": "Detailed shot of Bitcoin/Ethereum for affiliate and tournament features."
+      }
+    ]
+  },
+  "components_to_use": {
+    "icons": "@phosphor-icons/react (Command: yarn add @phosphor-icons/react)",
+    "charts": "Recharts (Command: yarn add recharts) for real-time live trading charts. Ensure stroke widths are 2px and use neon brand/trading colors.",
+    "ui_library": "Shadcn UI (Tabs, Dialog, DropdownMenu, Select). Do not use pure HTML tags for advanced interactions.",
+    "animations": "framer-motion, @studio-freight/react-lenis, react-fast-marquee"
+  },
+  "accessibility_and_testing": {
+    "testing": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='buy-button').",
+    "contrast": "Ensure text contrast meets APCA/WCAG standards. Text over images must have drop-shadow or heavy overlay.",
+    "focus": "focus:ring-2 focus:ring-[#00BCD4] focus:outline-none"
+  },
+  "instructions_to_main_agent": [
+    "Build the Landing Page with Lenis scroll, Framer motion staggered reveals, and a dynamic marquee ticker for prices.",
+    "Build the Dashboard using a dense 'Control Room' grid (grid-cols-12 logic). Embed Recharts for the main trading area.",
+    "Apply #080808 to the main body and #121212 to cards. Use border-white/10 for subtle separation.",
+    "Ensure Buy (#00BFA5) and Sell (#E53935) buttons are highly prominent and have active press states.",
+    "Use the specific font classes: 'font-sans' (Outfit) for headings and 'font-mono' for prices/numbers.",
+    "Make the entire application mobile responsive. On mobile, stack dashboard widgets and convert sidebars to hamburger navigation."
+  ]
+}

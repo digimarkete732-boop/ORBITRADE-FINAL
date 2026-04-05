@@ -244,7 +244,13 @@ const Dashboard = () => {
     return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const getTimeLeft = (et) => Math.max(0, new Date(et) - new Date());
+  // Force re-render every 50ms for smooth countdown - tick is used in render
+  const getTimeLeft = useCallback((et) => {
+    // Include tick in calculation to ensure re-render triggers recalculation
+    void tick; // Ensure tick is referenced
+    return Math.max(0, new Date(et).getTime() - Date.now());
+  }, [tick]);
+  
   const formatTimeLeft = (ms) => {
     if (ms <= 0) return '0.0s';
     const totalSec = ms / 1000;
