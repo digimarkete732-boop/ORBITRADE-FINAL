@@ -12,7 +12,7 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('orbital_token');
+    const token = localStorage.getItem('orbitrade_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,7 +28,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('orbital_token');
+      localStorage.removeItem('orbitrade_token');
       window.location.href = '/auth';
     }
     return Promise.reject(error);

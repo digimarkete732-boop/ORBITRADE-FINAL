@@ -12,11 +12,11 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('orbital_token'));
+  const [token, setToken] = useState(localStorage.getItem('orbitrade_token'));
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('orbital_token');
+      const storedToken = localStorage.getItem('orbitrade_token');
       if (storedToken) {
         try {
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
           setUser(response.data);
           setToken(storedToken);
         } catch (error) {
-          localStorage.removeItem('orbital_token');
+          localStorage.removeItem('orbitrade_token');
           delete api.defaults.headers.common['Authorization'];
         }
       }
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const response = await api.post('/api/auth/login', { email, password });
     const { access_token, user: userData } = response.data;
-    localStorage.setItem('orbital_token', access_token);
+    localStorage.setItem('orbitrade_token', access_token);
     api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
     setToken(access_token);
     setUser(userData);
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
     if (referral_code) payload.referral_code = referral_code;
     const response = await api.post('/api/auth/register', payload);
     const { access_token, user: userData } = response.data;
-    localStorage.setItem('orbital_token', access_token);
+    localStorage.setItem('orbitrade_token', access_token);
     api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
     setToken(access_token);
     setUser(userData);
@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('orbital_token');
+    localStorage.removeItem('orbitrade_token');
     delete api.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);

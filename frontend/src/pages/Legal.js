@@ -48,7 +48,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: '10. Contact',
-        content: `For questions about these Terms, contact: support@orbital.trade`
+        content: `For questions about these Terms, contact: support@orbitrade.live`
       }
     ]
   },
@@ -95,7 +95,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: '10. Contact',
-        content: `Data Protection Officer: privacy@orbital.trade`
+        content: `Data Protection Officer: privacy@orbitrade.live`
       }
     ]
   },

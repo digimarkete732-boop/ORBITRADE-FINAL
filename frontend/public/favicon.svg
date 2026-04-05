@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a1628"/>
+      <stop offset="100%" stop-color="#080c14"/>
+    </linearGradient>
+    <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00BCD4"/>
+      <stop offset="100%" stop-color="#00BFA5"/>
+    </linearGradient>
+    <linearGradient id="barGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00BCD4"/>
+      <stop offset="100%" stop-color="#00838F"/>
+    </linearGradient>
+    <linearGradient id="barGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#00BFA5"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Outer orbit ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#orbitGrad)" stroke-width="12" opacity="0.3"/>
+  <!-- Inner orbit ring -->
+  <circle cx="256" cy="256" r="145" fill="none" stroke="url(#orbitGrad)" stroke-width="8" opacity="0.2"/>
+  <!-- Trading bars -->
+  <rect x="175" y="220" width="40" height="140" rx="8" fill="url(#barGrad1)" opacity="0.9"/>
+  <rect x="236" y="160" width="40" height="200" rx="8" fill="url(#barGrad2)"/>
+  <rect x="297" y="240" width="40" height="120" rx="8" fill="url(#barGrad1)" opacity="0.9"/>
+  <!-- Orbiting dot -->
+  <circle cx="256" cy="56" r="18" fill="#00BCD4">
+    <animateTransform attributeName="transform" type="rotate" from="0 256 256" to="360 256 256" dur="8s" repeatCount="indefinite"/>
+  </circle>
+  <!-- Subtle glow -->
+  <circle cx="256" cy="56" r="28" fill="#00BCD4" opacity="0.3">
+    <animateTransform attributeName="transform" type="rotate" from="0 256 256" to="360 256 256" dur="8s" repeatCount="indefinite"/>
+  </circle>
+</svg>
