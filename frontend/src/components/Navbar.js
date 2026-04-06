@@ -162,32 +162,37 @@ const Navbar = () => {
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/auth"
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-                  data-testid="login-link"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/auth"
-                  className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-all"
-                  data-testid="signup-link"
-                >
-                  Get Started
-                </Link>
-              </div>
+              /* Hide auth buttons when already on auth page */
+              location.pathname !== '/auth' && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Link
+                    to="/auth"
+                    className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors whitespace-nowrap"
+                    data-testid="login-link"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/auth"
+                    className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-all whitespace-nowrap"
+                    data-testid="signup-link"
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              )
             )}
 
-            {/* Mobile Menu Button */}
-            <button
-              className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
-              onClick={() => setMenuOpen(!menuOpen)}
-              data-testid="mobile-menu"
-            >
-              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {/* Mobile Menu Button - hide on auth page when not logged in */}
+            {(token || location.pathname !== '/auth') && (
+              <button
+                className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+                onClick={() => setMenuOpen(!menuOpen)}
+                data-testid="mobile-menu"
+              >
+                {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            )}
           </div>
         </div>
       </div>
