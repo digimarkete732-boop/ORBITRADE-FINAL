@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import Marquee from 'react-fast-marquee';
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import api from '../services/api';
 
 // Animated counter component
 const AnimatedCounter = ({ value, suffix = '' }) => {
@@ -93,15 +94,82 @@ const Landing = () => {
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.9]);
 
-  // Sample live prices for marquee
-  const livePrices = [
-    { symbol: 'BTC/USD', price: '67,432.50', change: '+2.4%', up: true },
-    { symbol: 'ETH/USD', price: '3,521.20', change: '+1.8%', up: true },
-    { symbol: 'EUR/USD', price: '1.0875', change: '-0.3%', up: false },
-    { symbol: 'XAU/USD', price: '2,345.60', change: '+0.5%', up: true },
-    { symbol: 'GBP/USD', price: '1.2678', change: '+0.2%', up: true },
-    { symbol: 'SOL/USD', price: '142.35', change: '+5.2%', up: true },
-  ];
+  // Real-time prices state
+  const [livePrices, setLivePrices] = useState([
+    { symbol: 'BTC/USD', price: '-.--', change: '--%', up: true },
+    { symbol: 'ETH/USD', price: '-.--', change: '--%', up: true },
+    { symbol: 'EUR/USD', price: '-.--', change: '--%', up: false },
+    { symbol: 'XAU/USD', price: '-.--', change: '--%', up: true },
+    { symbol: 'GBP/USD', price: '-.--', change: '--%', up: true },
+    { symbol: 'SOL/USD', price: '-.--', change: '--%', up: true },
+  ]);
+
+  // Fetch real prices from API
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const response = await api.get('/api/prices');
+        const data = response.data;
+        
+        const cryptoMap = {
+          'BTC/USD': 'bitcoin',
+          'ETH/USD': 'ethereum',
+          'SOL/USD': 'solana'
+        };
+        
+        const updatedPrices = [
+          // Crypto
+          {
+            symbol: 'BTC/USD',
+            price: data.crypto?.bitcoin?.usd?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-.--',
+            change: `${data.crypto?.bitcoin?.usd_24h_change >= 0 ? '+' : ''}${data.crypto?.bitcoin?.usd_24h_change?.toFixed(1) || 0}%`,
+            up: (data.crypto?.bitcoin?.usd_24h_change || 0) >= 0
+          },
+          {
+            symbol: 'ETH/USD',
+            price: data.crypto?.ethereum?.usd?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-.--',
+            change: `${data.crypto?.ethereum?.usd_24h_change >= 0 ? '+' : ''}${data.crypto?.ethereum?.usd_24h_change?.toFixed(1) || 0}%`,
+            up: (data.crypto?.ethereum?.usd_24h_change || 0) >= 0
+          },
+          // Forex
+          {
+            symbol: 'EUR/USD',
+            price: data.forex?.['EUR/USD']?.price?.toFixed(4) || '-.--',
+            change: `${data.forex?.['EUR/USD']?.change_24h >= 0 ? '+' : ''}${data.forex?.['EUR/USD']?.change_24h?.toFixed(2) || 0}%`,
+            up: (data.forex?.['EUR/USD']?.change_24h || 0) >= 0
+          },
+          {
+            symbol: 'GBP/USD',
+            price: data.forex?.['GBP/USD']?.price?.toFixed(4) || '-.--',
+            change: `${data.forex?.['GBP/USD']?.change_24h >= 0 ? '+' : ''}${data.forex?.['GBP/USD']?.change_24h?.toFixed(2) || 0}%`,
+            up: (data.forex?.['GBP/USD']?.change_24h || 0) >= 0
+          },
+          // Metals
+          {
+            symbol: 'XAU/USD',
+            price: data.metals?.['XAU/USD']?.price?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-.--',
+            change: `${data.metals?.['XAU/USD']?.change_24h >= 0 ? '+' : ''}${data.metals?.['XAU/USD']?.change_24h?.toFixed(2) || 0}%`,
+            up: (data.metals?.['XAU/USD']?.change_24h || 0) >= 0
+          },
+          // Crypto
+          {
+            symbol: 'SOL/USD',
+            price: data.crypto?.solana?.usd?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-.--',
+            change: `${data.crypto?.solana?.usd_24h_change >= 0 ? '+' : ''}${data.crypto?.solana?.usd_24h_change?.toFixed(1) || 0}%`,
+            up: (data.crypto?.solana?.usd_24h_change || 0) >= 0
+          },
+        ];
+        
+        setLivePrices(updatedPrices);
+      } catch (error) {
+        console.error('Error fetching prices:', error);
+      }
+    };
+
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 5000); // Update every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const features = [
     { icon: BarChart3, title: 'Binary Options Trading', description: 'Trade forex, crypto, and metals with up to 95% returns. Simple Buy/Sell predictions with 5-60 second expiry times.' },

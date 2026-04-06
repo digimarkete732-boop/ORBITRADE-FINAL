@@ -4,7 +4,7 @@ import {
   Globe, ArrowUp, ArrowDown, Clock, 
   TrendingUp, TrendingDown, Wallet, Zap, Activity,
   MessageCircle, X, Send, Minus, Plus, Sparkles, Target,
-  ChevronRight, BarChart3, DollarSign, Eye, Flame, ChevronDown
+  ChevronRight, BarChart3, DollarSign, Eye, Flame, ChevronDown, Bell
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ import Navbar from '../components/Navbar';
 import TradingChart from '../components/TradingChart';
 import api from '../services/api';
 import socketService from '../services/socket';
+import pushService from '../services/push';
 
 const Dashboard = () => {
   const { user, refreshUser, isDemoMode } = useAuth();
@@ -106,16 +107,57 @@ const Dashboard = () => {
       }
     };
 
+    // Initialize push notifications
+    const initPush = async () => {
+      try {
+        await pushService.init();
+        const permission = pushService.getPermissionStatus();
+        if (permission === 'default') {
+          // Don't auto-prompt, let user enable via settings
+          console.log('Push notifications available but not enabled');
+        }
+      } catch (error) {
+        console.warn('Push notification init failed:', error);
+      }
+    };
+
     fetchData();
+    initPush();
     socketService.connect();
     socketService.on('price_update', (data) => { if (data) setPrices(data); });
-    socketService.on('trade_settled', (data) => {
+    socketService.on('trade_settled', async (data) => {
       const profitText = data.profit >= 0 ? `+$${data.profit.toFixed(2)}` : `-$${Math.abs(data.profit).toFixed(2)}`;
-      if (data.status === 'won') toast.success(`Trade Won! ${profitText}`);
-      else toast.error(`Trade closed: ${profitText}`);
+      if (data.status === 'won') {
+        toast.success(`Trade Won! ${profitText}`);
+        // Show push notification for wins
+        if (pushService.getPermissionStatus() === 'granted') {
+          pushService.showLocalNotification('Trade Won!', {
+            body: `You earned ${profitText} on your trade`,
+            tag: `trade-${data.trade_id}`,
+            data: { url: '/dashboard' }
+          });
+        }
+      } else {
+        toast.error(`Trade closed: ${profitText}`);
+      }
       refreshUser();
       fetchTrades();
       fetchPnl();
+    });
+    
+    // Listen for real-time notifications
+    socketService.on('notification', (data) => {
+      toast(data.body, {
+        icon: '🔔',
+        duration: 5000
+      });
+      if (pushService.getPermissionStatus() === 'granted') {
+        pushService.showLocalNotification(data.title, {
+          body: data.body,
+          tag: 'orbitrade-notification',
+          data: data.data
+        });
+      }
     });
 
     const interval = setInterval(() => fetchTrades(), 2000);
