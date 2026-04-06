@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Marquee from 'react-fast-marquee';
 import { 
   Globe, ArrowUp, ArrowDown, Clock, 
   TrendingUp, TrendingDown, Wallet, Zap, Activity,
@@ -337,25 +338,27 @@ const Dashboard = () => {
       <main className="flex-grow pt-16 relative z-10">
         {/* Scrolling Price Ticker */}
         <div className="border-b border-white/5 bg-[#0a0f1a] overflow-hidden">
-          <div className="flex items-center gap-6 py-1.5 px-4 animate-marquee whitespace-nowrap">
-            {assets.slice(0, 12).map(a => {
-              const p = getCurrentPrice(a.symbol, a.asset_type);
-              const c = getChange24h(a.symbol, a.asset_type);
-              const pos = c >= 0;
-              return (
-                <span key={a.symbol} className="inline-flex items-center gap-2 text-xs font-mono cursor-pointer hover:opacity-80" 
-                  onClick={() => { setSelectedAsset(a); setSelectedCategory(a.asset_type); }}>
-                  <span className="text-gray-500">{a.symbol}</span>
-                  <span className={pos ? 'text-emerald-400' : 'text-red-400'}>
-                    {formatPrice(p, a.asset_type)}
+          <Marquee gradient={false} speed={40} pauseOnHover>
+            <div className="flex items-center gap-8 py-1.5 px-4">
+              {assets.slice(0, 12).map(a => {
+                const p = getCurrentPrice(a.symbol, a.asset_type);
+                const c = getChange24h(a.symbol, a.asset_type);
+                const pos = c >= 0;
+                return (
+                  <span key={a.symbol} className="inline-flex items-center gap-2 text-xs font-mono cursor-pointer hover:opacity-80" 
+                    onClick={() => { setSelectedAsset(a); setSelectedCategory(a.asset_type); }}>
+                    <span className="text-gray-500">{a.symbol}</span>
+                    <span className={pos ? 'text-emerald-400' : 'text-red-400'}>
+                      {formatPrice(p, a.asset_type)}
+                    </span>
+                    <span className={`${pos ? 'text-emerald-500' : 'text-red-500'} text-[10px]`}>
+                      {pos ? '+' : ''}{c.toFixed(2)}%
+                    </span>
                   </span>
-                  <span className={`${pos ? 'text-emerald-500' : 'text-red-500'} text-[10px]`}>
-                    {pos ? '+' : ''}{c.toFixed(2)}%
-                  </span>
-                </span>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </Marquee>
         </div>
 
         <div className="p-2 lg:p-3 max-w-[1800px] mx-auto w-full">
